@@ -9,10 +9,10 @@ define('FOOTER_FILE', CONFIG['SERVER_ROOT'] . '/design/publicfooter.php');
     <title><?= display_str($PageTitle) ?></title>
     <meta http-equiv="X-UA-Compatible" content="chrome=1; IE=edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <meta name="referrer" content="none, no-referrer, same-origin" />
+    <meta name="referrer" content="same-origin" />
     <link rel="shortcut icon" href="favicon.ico" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="viewport" content="width=device-width; initial-scale=1.0;" />
+    <link rel="apple-touch-icon" href="favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <? if (CONFIG['IS_DEV']) { ?>
         <link rel="stylesheet" type="text/css" media="screen" href="/src/css/publicstyle/style.css" />
     <? } else { ?>
@@ -50,14 +50,14 @@ define('FOOTER_FILE', CONFIG['SERVER_ROOT'] . '/design/publicfooter.php');
                 <div id="logo">
                     <ul id="index-login">
                         <?php if (CONFIG['SHOW_PUBLIC_INDEX']) { ?>
-                            <li><a href="index.php"><?= Lang::get('pub.public_index') ?></a></li>
+                            <li><a href="index.php"><?= t('server.pub.public_index') ?></a></li>
                         <?php } ?>
-                        <li><a id="login-a" href="login.php<?= (isset($LoginKey) && $LoginKey) ? "?loginkey=$LoginKey" : "" ?>"><?= Lang::get('pub.login') ?></a></li>
+                        <li><a id="login-a" href="login.php<?= (isset($LoginKey) && $LoginKey) ? "?loginkey=$LoginKey" : "" ?>"><?= t('server.pub.login') ?></a></li>
                         <?php if (open_registration()) { ?>
-                            <li><a href="register.php"><?= Lang::get('pub.register') ?></a></li>
+                            <li><a href="register.php"><?= t('server.pub.register') ?></a></li>
                         <?php } ?>
                         <?php if (CONFIG['OPEN_EXTERNAL_REFERRALS']) { ?>
-                            <li><a href="referral.php"><?= Lang::get('pub.referral') ?></a></li>
+                            <li><a href="referral.php"><?= t('server.pub.referral') ?></a></li>
                         <?php } ?>
 
                     </ul>

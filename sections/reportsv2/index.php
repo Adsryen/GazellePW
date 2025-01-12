@@ -5,8 +5,7 @@
  */
 
 enforce_login();
-include(Lang::getLangfilePath("report_types"));
-//include(CONFIG['SERVER_ROOT'].'/sections/reportsv2/array.php');
+include(CONFIG['SERVER_ROOT'] . '/classes/reportsv2_type.php');
 
 if (isset($_REQUEST['action'])) {
     switch ($_REQUEST['action']) {
@@ -58,11 +57,10 @@ if (isset($_REQUEST['action'])) {
         case 'takeuploaderreply':
             include(CONFIG['SERVER_ROOT'] . '/sections/reportsv2/takeuploaderreply.php');
             break;
+        case 'view':
+            include(CONFIG['SERVER_ROOT'] . '/sections/reportsv2/views.php');
+            break;
     }
 } else {
-    if (isset($_GET['view'])) {
-        include(CONFIG['SERVER_ROOT'] . '/sections/reportsv2/static.php');
-    } else {
-        include(CONFIG['SERVER_ROOT'] . '/sections/reportsv2/views.php');
-    }
+    include(CONFIG['SERVER_ROOT'] . '/sections/reportsv2/static.php');
 }

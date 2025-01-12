@@ -17,7 +17,7 @@ globalapp.uploadMovieAutofill = function uploadMovieAutofill() {
     type: 'GET',
     error: (err) => {
       globalapp.buttonSetLoading(target, false)
-      globalapp.setFormError('common.imdb_unknown_error')
+      globalapp.setFormError('client.common.imdb_unknown_error')
     },
     success: (data) => {
       globalapp.buttonSetLoading(target, false)
@@ -25,10 +25,10 @@ globalapp.uploadMovieAutofill = function uploadMovieAutofill() {
       if (data.code) {
         globalapp.setFormError(
           data.code === 1
-            ? 'error.invalid_imdb_link_note'
+            ? 'client.error.invalid_imdb_link_note'
             : data.code === 2
-            ? 'error.torrent_group_exists_note'
-            : 'error.imdb_unknown_error',
+            ? 'client.error.torrent_group_exists_note'
+            : 'client.error.imdb_unknown_error',
           data.code === 2 && { groupID: data.error.GroupID }
         )
         return
@@ -45,6 +45,9 @@ globalapp.uploadMovieAutofill = function uploadMovieAutofill() {
       }
       if (data.Plot) {
         $('#desc').val(data.Plot)
+      }
+      if (data.MainPlot) {
+        $('#maindesc').val(data.MainPlot)
       }
       if (data.Production) {
         $('#remaster_record_label').val(data.Production.replace(/, ?/, ' / '))
@@ -112,32 +115,35 @@ globalapp.uploadMovieAutofill = function uploadMovieAutofill() {
       }
       globalapp.uploadRemoveAllArtistFields()
       for (var i = 0; i < artists.length; i++) {
-        var artistid, importanceid, artistimdbid, artist_cname
+        var artistid, importanceid, artistimdbid, artist_sub_name
         if (i) {
           artistid = '#artist_' + i
           importanceid = '#importance_' + i
           artistimdbid = '#artist_id_' + i
-          artist_cname = '#artist_chinese_' + i
+          artist_sub_name = '#artist_sub_' + i
           globalapp.uploadAddArtistField(true)
         } else {
           artistid = '#artist'
           importanceid = '#importance'
           artistimdbid = '#artist_id'
-          artist_cname = '#artist_chinese'
+          artist_sub_name = '#artist_sub'
         }
         $(artistid).val(artists[i])
         $(importanceid).val(importance[i])
         $(artistimdbid).val(artist_ids[i])
-        if (data.ChineseName) {
-          $(artist_cname).val(data.ChineseName[[artists[i]]])
+        if (data.SubName && data.SubName[[artists[i]]]) {
+          $(artist_sub_name).val(data.SubName[[artists[i]]])
+          $(artist_sub_name).prop('disabled', true)
         }
       }
       $('.FormValidation')[0].validator.validate()
       $('.FormUpload').addClass('u-formUploadAutoFilled')
-      $('.u-formUploadArtistList input:not([name="artists_chinese[]"]), .u-formUploadArtistList select').prop(
-        'disabled',
-        true
-      )
+      if (artists.length > 0) {
+        $('.u-formUploadArtistList input:not([name="artists_sub[]"]), .u-formUploadArtistList select').prop(
+          'disabled',
+          true
+        )
+      }
       if (artists.length >= 5) {
         globalapp.uploadArtistsShowMore({ hide: true })
       }
@@ -148,7 +154,7 @@ globalapp.uploadMovieAutofill = function uploadMovieAutofill() {
 
 globalapp.setFormError = function setFormError(key, options = {}) {
   if (key) {
-    const message = lang.get(key, options)
+    const message = t(key, options)
     $('.imdb.Form-errorMessage').html(message)
   } else {
     $('.imdb.Form-errorMessage').html('')

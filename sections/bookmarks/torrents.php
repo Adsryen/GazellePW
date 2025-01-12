@@ -27,7 +27,7 @@ if (!empty($_GET['userid'])) {
 }
 
 $Sneaky = $UserID !== $LoggedUser['ID'];
-$Title = $Sneaky ? "$Username" . Lang::get('bookmarks.s_bookmarked_torrent_groups') : Lang::get('bookmarks.your_bookmarked_torrent_groups');
+$Title = $Sneaky ? "$Username" . t('server.bookmarks.s_bookmarked_torrent_groups') : t('server.bookmarks.your_bookmarked_torrent_groups');
 
 $NumGroups = 0;
 $ArtistCount = array();
@@ -41,16 +41,21 @@ foreach ($GroupIDs as $Idx => $GroupID) {
     // Handle stats and stuff
     $NumGroups++;
     extract(Torrents::array_group($TorrentList[$GroupID]));
+    $ArtistSet = [];
     foreach ($Artists as $Importance => $ImportanceArtists) {
         foreach ($ImportanceArtists as $Artist) {
-            if (!isset($TopArtists[$Artist['id']])) {
-                $TopArtists[$Artist['id']] = array('data' => $Artist, 'count' => 1);
-            } else {
-                $TopArtists[$Artist['id']]['count']++;
+            if (isset($ArtistSet[$Artist['ArtistID']])) {
+                continue;
             }
+            if (!isset($TopArtists[$Artist['ArtistID']])) {
+                $TopArtists[$Artist['ArtistID']] = array('data' => $Artist, 'count' => 1);
+            } else {
+                $TopArtists[$Artist['ArtistID']]['count']++;
+            }
+            $ArtistSet[$Artist['ArtistID']] = true;
         }
     }
-    new Tags($TagList);
+    new Tags(Torrents::tags($TorrentList[$GroupID]));
 }
 
 $GroupIDs = array_values($GroupIDs);
@@ -61,32 +66,41 @@ View::show_header($Title, 'browse,collage', 'PageBookmarkTorrent');
 ?>
 <div class="LayoutBody">
     <div class="BodyHeader">
-        <h2 class="BodyHeader-nav">
-            <? if (!$Sneaky) { ?><a href="feeds.php?feed=torrents_bookmarks_t_<?= $LoggedUser['torrent_pass'] ?>&amp;user=<?= $LoggedUser['ID'] ?>&amp;auth=<?= $LoggedUser['RSS_Auth'] ?>&amp;passkey=<?= $LoggedUser['torrent_pass'] ?>&amp;authkey=<?= $LoggedUser['AuthKey'] ?>&amp;name=<?= urlencode(CONFIG['SITE_NAME'] . ': Bookmarked Torrents') ?>"><img src="<?= CONFIG['STATIC_SERVER'] ?>/common/symbols/rss.png" alt="RSS feed" /></a>&nbsp;
-                <? } ?><?= $Title ?></h2>
+        <h2 class="BodyHeader-nav TorrentViewWrapper">
+            <div class="RssTitle">
+                <? if (!$Sneaky) {
+                ?><a target="_blank" data-tooltip="<?= t('server.user.rss_address') ?>" href="feeds.php?feed=torrents_bookmarks_t_<?= $LoggedUser['torrent_pass'] ?>&amp;user=<?= $LoggedUser['ID'] ?>&amp;auth=<?= $LoggedUser['RSS_Auth'] ?>&amp;passkey=<?= $LoggedUser['torrent_pass'] ?>&amp;authkey=<?= $LoggedUser['AuthKey'] ?>&amp;name=<?= urlencode(CONFIG['SITE_NAME'] . ': Bookmarked Torrents') ?>">
+                        <?= icon('rss') ?></a>
+                    <?
+                } ?><?= $Title ?>
+            </div>
+            <?
+            renderTorrentViewButton(TorrentViewScene::Bookmark);
+            ?>
+        </h2>
         <div class="BodyNavLinks">
-            <a href="bookmarks.php?type=torrents" class="brackets"><?= Lang::get('global.torrents') ?></a>
-            <a href="bookmarks.php?type=artists" class="brackets"><?= Lang::get('global.artists') ?></a>
+            <a href="bookmarks.php?type=torrents" class="brackets"><?= t('server.index.moviegroups') ?></a>
+            <a href="bookmarks.php?type=artists" class="brackets"><?= t('server.common.artists') ?></a>
             <?
             if (CONFIG['ENABLE_COLLAGES']) {
             ?>
-                <a href="bookmarks.php?type=collages" class="brackets"><?= Lang::get('bookmarks.collages') ?></a>
+                <a href="bookmarks.php?type=collages" class="brackets"><?= t('server.bookmarks.collages') ?></a>
             <?
             }
             ?>
-            <a href="bookmarks.php?type=requests" class="brackets"><?= Lang::get('global.requests') ?></a>
+            <a href="bookmarks.php?type=requests" class="brackets"><?= t('server.common.requests') ?></a>
             <? if (count($TorrentList) > 0) { ?>
         </div>
         <div class="BodyNavLinks">
-            <a href="bookmarks.php?action=remove_snatched&amp;auth=<?= $LoggedUser['AuthKey'] ?>" class="brackets" onclick="return confirm('<?= Lang::get('bookmarks.remove_snatched_confirm') ?>');"><?= Lang::get('bookmarks.remove_snatched') ?></a>
-            <a href="bookmarks.php?action=edit&amp;type=torrents" class="brackets"><?= Lang::get('bookmarks.manage_torrents') ?></a>
+            <a href="bookmarks.php?action=remove_snatched&amp;auth=<?= $LoggedUser['AuthKey'] ?>" class="brackets" onclick="return confirm('<?= t('server.bookmarks.remove_snatched_confirm') ?>');"><?= t('server.bookmarks.remove_snatched') ?></a>
+            <a href="bookmarks.php?action=edit&amp;type=torrents" class="brackets"><?= t('server.bookmarks.manage_torrents') ?></a>
         <? } ?>
         </div>
     </div>
     <? if (count($TorrentList) === 0) { ?>
-        <div class="Box">
-            <div class="Box-body" align="center">
-                <h2><?= Lang::get('bookmarks.no_bookmarked_torrents') ?></h2>
+        <div>
+            <div class="center">
+                <div><?= t('server.bookmarks.no_bookmarked_torrents') ?></div>
             </div>
         </div>
 </div>
@@ -99,24 +113,22 @@ View::show_header($Title, 'browse,collage', 'PageBookmarkTorrent');
     <div class="Sidebar LayoutMainSidebar-sidebar">
         <div class="SidebarItemStats SidebarItem Box">
             <div class="SidebarItem-header Box-header">
-                <strong><?= Lang::get('bookmarks.stats') ?></strong>
+                <strong><?= t('server.bookmarks.stats') ?></strong>
             </div>
             <ul class="SidebarList SidebarItem-body Box-body">
-                <li class="SidebarList-item"><?= Lang::get('bookmarks.torrent_groups') ?>: <?= $NumGroups ?></li>
-                <li class="SidebarList-item"><?= Lang::get('global.artists') ?>: <?= count($ArtistCount) ?></li>
+                <li class="SidebarList-item"><?= t('server.bookmarks.torrent_groups') ?>: <?= $NumGroups ?></li>
+                <li class="SidebarList-item"><?= t('server.common.artists') ?>: <?= count($ArtistCount) ?></li>
             </ul>
         </div>
         <div class="SidebarItemTags SidebarItem Box">
-            <div class="SidebarItem-header Box-header"><strong><?= Lang::get('bookmarks.top_tags') ?></strong></div>
-            <div class="SidebarItem-body Box-body">
-                <ul class="SidebarList">
-                    <? Tags::format_top(5, 'torrents.php?taglist=', '', 'SidebarList-item') ?>
-                </ul>
+            <div class="SidebarItem-header Box-header"><strong><?= t('server.bookmarks.top_tags') ?></strong></div>
+            <div class="SidebarList SidebarItem-body Box-body">
+                <? Tags::format_top(5, 'torrents.php?action=advanced&taglist=', '', 'SidebarList-item') ?>
             </div>
         </div>
         <div class="SidebarItemArtists SidebarItem Box">
             <div class="SidebarItem-header Box-header">
-                <strong><?= Lang::get('bookmarks.top_artists') ?></strong>
+                <strong><?= t('server.bookmarks.top_artists') ?></strong>
             </div>
             <div class="SidebarList SidebarItem-body Box-body">
                 <?
@@ -131,7 +143,7 @@ View::show_header($Title, 'browse,collage', 'PageBookmarkTorrent');
                         }
                 ?>
                         <li class="SidebarList-item">
-                            <a href="artist.php?id=<?= $ID ?>"><?= Artists::display_artist($Artist['data']) ?></a> (<?= number_format($Artist['count']) ?>)
+                            <div><a href="artist.php?id=<?= $ID ?>"><?= Artists::display_artist($Artist['data']) ?></a> (<?= number_format($Artist['count']) ?>)</div>
                         </li>
                 <?
                     }
@@ -146,18 +158,14 @@ View::show_header($Title, 'browse,collage', 'PageBookmarkTorrent');
         </div>
     </div>
 
-    <div class="Box">
-        <div class="Box-body">
-            <?php
-            $Groups = [];
-            foreach ($GroupIDs as $GroupID) {
-                $Groups[] = $TorrentList[$GroupID];
-            }
-            $tableRender = new TorrentGroupCoverTableView($Groups);
-            $tableRender->render();
-            ?>
-        </div>
-    </div>
+    <?php
+    $Groups = [];
+    foreach ($GroupIDs as $GroupID) {
+        $Groups[] = $TorrentList[$GroupID];
+    }
+    $tableRender = newGroupTorrentView(TorrentViewScene::Bookmark, $Groups);
+    $tableRender->render();
+    ?>
 </div>
 
 <?php

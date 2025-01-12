@@ -54,7 +54,7 @@ if (isset($_GET['expire'])) {
     header("Location: userhistory.php?action=token_history&userid=$UserID");
 }
 
-View::show_header(Lang::get('userhistory.fl_token_history'), '', 'PageUserHistoryToken');
+View::show_header(t('server.userhistory.fl_token_history'), '', 'PageUserHistoryToken');
 
 list($Page, $Limit) = Format::page_limit(25);
 
@@ -83,56 +83,58 @@ $Pages = Format::get_pages($Page, $NumResults, 25);
 ?>
 <div class="LayoutBody">
     <div class="BodyHeader">
-        <h2 class="BodyHeader-nav"><?= Lang::get('userhistory.fl_token_history_for_before') ?><?= Users::format_username($UserID, false, false, false) ?><?= Lang::get('userhistory.fl_token_history_for_after') ?></h2>
+        <h2 class="BodyHeader-nav">
+            <?= t('server.userhistory.fl_token_history_for', ['Values' => [
+                Users::format_username($UserID, false, false, false)
+            ]]) ?>
+        </h2>
     </div>
     <div class="BodyNavLinks"><?= $Pages ?></div>
-    <div class="TableContainer">
-        <table class="TableUserTokenHistory Table">
-            <tr class="Table-rowHeader">
-                <td class="Table-cell"><?= Lang::get('global.torrent') ?></td>
-                <td class="Table-cell"><?= Lang::get('userhistory.time') ?></td>
-                <td class="Table-cell"><?= Lang::get('userhistory.expired') ?></td>
-                <? if (check_perms('users_mod')) { ?>
-                    <td class="Table-cell"><?= Lang::get('userhistory.downloaded') ?></td>
-                    <td class="Table-cell"><?= Lang::get('userhistory.tokens_used') ?></td>
-                <? } ?>
-            </tr>
-            <?
-            foreach ($Tokens as $Token) {
-                $GroupIDs[] = $Token['GroupID'];
-            }
-            $Artists = Artists::get_artists($GroupIDs);
-
-            $i = true;
-            foreach ($Tokens as $Token) {
-                $i = !$i;
-                list($TorrentID, $GroupID, $Time, $Expired, $Downloaded, $Uses, $Name) = $Token;
-                if ($Name != '') {
-                    $Name = "<a href=\"torrents.php?torrentid=$TorrentID\">$Name</a>";
-                } else {
-                    $Name = "(<i>Deleted torrent <a href=\"log.php?search=Torrent+$TorrentID\">$TorrentID</a></i>)";
-                }
-                $ArtistName = Artists::display_artists($Artists[$GroupID]);
-                if ($ArtistName) {
-                    $Name = $ArtistName . $Name;
-                }
-
-            ?>
-                <tr class="Table-row">
-                    <td class="Table-cell"><?= $Name ?></td>
-                    <td class="Table-cell"><?= time_diff($Time) ?></td>
-                    <td class="Table-cell"><?= ($Expired ? Lang::get('userhistory.yes') : Lang::get('userhistory.no')) ?><?= (check_perms('users_mod') && !$Expired) ? " <a href=\"userhistory.php?action=token_history&amp;expire=1&amp;userid=$UserID&amp;torrentid=$TorrentID\">" . Lang::get('userhistory.expire_button') . "</a>" : ''; ?></td>
+    <? if (count($Tokens) > 0) { ?>
+        <div class="TableContainer">
+            <table class="TableUserTokenHistory Table">
+                <tr class="Table-rowHeader">
+                    <td class="Table-cell"><?= t('server.common.torrent') ?></td>
+                    <td class="Table-cell"><?= t('server.userhistory.time') ?></td>
+                    <td class="Table-cell"><?= t('server.userhistory.expired') ?></td>
                     <? if (check_perms('users_mod')) { ?>
-                        <td class="Table-cell"><?= Format::get_size($Downloaded) ?></td>
-                        <td class="Table-cell"><?= $Uses ?></td>
-                    <?  } ?>
+                        <td class="Table-cell"><?= t('server.userhistory.downloaded') ?></td>
+                        <td class="Table-cell"><?= t('server.userhistory.tokens_used') ?></td>
+                    <? } ?>
                 </tr>
-            <?
-            }
-            ?>
-        </table>
-    </div>
+                <?
+                foreach ($Tokens as $Token) {
+                    $GroupIDs[] = $Token['GroupID'];
+                }
+                $Groups = Torrents::get_groups($GroupIDs);
+
+                $i = true;
+                foreach ($Tokens as $Token) {
+                    $i = !$i;
+                    list($TorrentID, $GroupID, $Time, $Expired, $Downloaded, $Uses,) = $Token;
+                    $Group = $Groups[$GroupID];
+                    $Name = Torrents::torrent_simple_view($Group, $Group['Torrents'][$TorrentID]);
+
+                ?>
+                    <tr class="Table-row">
+                        <td class="Table-cell"><?= $Name ?></td>
+                        <td class="Table-cell"><?= time_diff($Time) ?></td>
+                        <td class="Table-cell"><?= ($Expired ? t('server.userhistory.yes') : t('server.userhistory.no')) ?><?= (check_perms('users_mod') && !$Expired) ? " <a href=\"userhistory.php?action=token_history&amp;expire=1&amp;userid=$UserID&amp;torrentid=$TorrentID\">" . t('server.userhistory.expire_button') . "</a>" : ''; ?></td>
+                        <? if (check_perms('users_mod')) { ?>
+                            <td class="Table-cell"><?= Format::get_size($Downloaded) ?></td>
+                            <td class="Table-cell"><?= $Uses ?></td>
+                        <?  } ?>
+                    </tr>
+                <?
+                }
+                ?>
+            </table>
+        </div>
 </div>
+
+<? } else {
+        VIew::line(t('server.common.no_results'));
+    } ?>
 <div class="BodyNavLinks"><?= $Pages ?></div>
 <?
 View::show_footer();

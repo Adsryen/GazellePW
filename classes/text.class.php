@@ -5,8 +5,42 @@ class Text {
      * @var array $ValidTags
      */
     private static $ValidTags = array(
-        'b' => 0, 'u' => 0, 'i' => 0, 's' => 0, '*' => 0, '#' => 0, 'artist' => 0, 'user' => 0, 'n' => 0, 'inlineurl' => 0, 'inlinesize' => 1, 'headline' => 1, 'align' => 1, 'color' => 1, 'colour' => 1, 'size' => 1, 'url' => 1, 'img' => 1, 'quote' => 1, 'pre' => 1, 'code' => 1, 'tex' => 0, 'hide' => 1, 'spoiler' => 1, 'plain' => 0, 'important' => 0, 'torrent' => 0, 'rule' => 0, 'mature' => 1, 'table' => 1, 'tr' => 1, 'td' => 1, 'lang' => 1,
-        'mediainfo' => 0, 'bdinfo' => 0, 'comparison' => 10
+        'b' => 0,
+        'u' => 0,
+        'i' => 0,
+        's' => 0,
+        '*' => 0,
+        '#' => 0,
+        'artist' => 0,
+        'user' => 0,
+        'n' => 0,
+        'inlineurl' => 0,
+        'inlinesize' => 1,
+        'headline' => 1,
+        'align' => 1,
+        'color' => 1,
+        'colour' => 1,
+        'size' => 1,
+        'url' => 1,
+        'img' => 1,
+        'quote' => 1,
+        'pre' => 1,
+        'code' => 1,
+        'tex' => 0,
+        'hide' => 1,
+        'spoiler' => 1,
+        'plain' => 0,
+        'important' => 0,
+        'torrent' => 0,
+        'rule' => 0,
+        'mature' => 1,
+        'table' => 1,
+        'tr' => 1,
+        'td' => 1,
+        'lang' => 1,
+        'mediainfo' => 0,
+        'bdinfo' => 0,
+        'comparison' => 10
     );
 
     /**
@@ -169,11 +203,12 @@ class Text {
             $Str = preg_replace('/(\={2})([^=].*)\1/i', '[inlinesize=7]$2[/inlinesize]', $Str);
         }
 
-        $HTML = nl2br(self::to_html(self::parse($Str)));
+        $HTML = str_replace(array("\r\n", "\r", "\n"), '<br />', self::to_html(self::parse($Str)));
 
         if (self::$TOC && $OutputTOC) {
             $HTML = self::parse_toc($Min) . $HTML;
         }
+
 
         $Debug->set_flag('BBCode end');
         return $HTML;
@@ -185,7 +220,7 @@ class Text {
         //Inline links
         $Str = preg_replace('/(?<!(\[url\]|\[url\=|\[img\=|\[img\]))http(s)?:\/\//i', '$1[inlineurl]http$2://', $Str);
 
-        return nl2br(self::raw_text(self::parse($Str)));
+        return str_replace(array("\r\n", "\r", "\n"), '<br />', self::raw_text(self::parse($Str)));
     }
 
 
@@ -225,7 +260,7 @@ class Text {
         }
         $Host = $URLInfo['host'];
         // If for some reason your site does not require subdomains or contains a directory in the CONFIG['SITE_URL'], revert to the line below.
-        if (empty($URLInfo['port']) && $Host === CONFIG['SITE_HOST']) {
+        if ($Host === CONFIG['SITE_HOST']) {
             $URL = '';
             if (!empty($URLInfo['path'])) {
                 $URL .= ltrim($URLInfo['path'], '/'); // Things break if the path starts with '//'
@@ -349,7 +384,7 @@ class Text {
 
 
             //5a) Different for different types of tag. Some tags don't close, others are weird like [*]
-            if ($TagName == 'img' && !empty($Tag[3][0])) { //[img=...]
+            if ($TagName == 'img' && !empty($Tag[3][0]) && self::valid_url(substr($Tag[3][0], 1))) { //[img=...]
                 $Block = ''; // Nothing inside this tag
                 // Don't need to touch $i
             } elseif ($TagName == 'inlineurl') { // We did a big replace early on to turn http:// into [inlineurl]http://
@@ -449,9 +484,11 @@ class Text {
                 case 'img':
                 case 'image':
                     if (empty($Block)) {
-                        $Block = $Attrib;
+                        $Elements = explode(',', $Attrib);
+                        $Block = end($Elements);
+                        $Attrib = preg_replace('/,?' . preg_quote($Block, '/') . '/i', '', $Attrib);
                     }
-                    $Array[$ArrayPos] = array('Type' => 'img', 'Val' => $Block);
+                    $Array[$ArrayPos] = array('Type' => 'img', 'Attr' => $Attrib,  'Val' => $Block);
                     break;
                 case 'aud':
                 case 'mp3':
@@ -523,9 +560,8 @@ class Text {
                     if (strstr(strtolower($Block), 'disc size')) {
                         $Array[$ArrayPos] = array('Type' => 'bdinfo', 'Val' => $Block);
                     } else {
-                        $Array[$ArrayPos] = array('Type' => 'mediainfo', 'Val' => $Block);
+                        $Array[$ArrayPos] = array('Type' => 'mediainfo', 'Val' =>  $Block);
                     }
-
                     break;
                 case 'bdinfo':
                     $Array[$ArrayPos] = array('Type' => 'bdinfo', 'Val' => $Block);
@@ -702,7 +738,7 @@ class Text {
         if (count($data) == 1) {
             if (is_array($data[0])) {
                 foreach ($data[0] as $k => $v) {
-                    if ($v !== false) {
+                    if (!empty($v)) {
                         $Str .= "<tr class='row'><td class='key'>$k:</td><td class='value'>$v</td></tr>";
                     }
                 }
@@ -719,7 +755,7 @@ class Text {
                     }
                     $s .= "<tr class='row'><td class='key'>#$Index</td></tr>";
                     foreach ($a as $k => $v) {
-                        if ($v !== false) {
+                        if (!empty($v)) {
                             $s .= "<tr class='row'><td class='key'>$k:</td><td class='value'>$v</td></tr>";
                         }
                     }
@@ -739,7 +775,7 @@ class Text {
                     $s = "";
                     if (is_array($a)) {
                         foreach ($a as $k => $v) {
-                            if ($v !== false) {
+                            if (!empty($v)) {
                                 $s .= "<tr class='row'><td class='key'>$k:</td><td class='value'>$v</td></tr>";
                             }
                         }
@@ -767,6 +803,43 @@ class Text {
             return false;
         }
     }
+
+    private static function parseBDInfoVideo($VideoTable) {
+        $Ret = [];
+        $Rows = explode("\n", $VideoTable);
+        $len = count($Rows);
+        for ($i = 0; $i < $len; $i++) {
+            $v = $Rows[$i];
+            unset($Rows[$i]);
+            if (str_starts_with($v, '-')) {
+                break;
+            }
+        }
+        foreach ($Rows as $key => $Row) {
+            preg_match('/(.*Video (?:\([0-9,]\))?) *([0-9.\(\),]* kbps) *(.*)/mi', $Row, $matches);
+            list(, $Codec, $Bitrate, $Desc) =  $matches;
+            $Ret[] = array_slice($matches, 1);
+        }
+        return  $Ret;
+    }
+
+    private static function parseBDInfoAudio($AudioTable) {
+        $Rows = explode("\n", $AudioTable);
+        $len = count($Rows);
+        for ($i = 0; $i < $len; $i++) {
+            $v = $Rows[$i];
+            unset($Rows[$i]);
+            if (str_starts_with($v, '-')) {
+                break;
+            }
+        }
+        foreach ($Rows as $key => $Row) {
+            preg_match('/(.*(?:Audio|Atmos)) *([a-zA-Z ]*[a-zA-Z]) *([0-9.]* kbps) *(.*)/', $Row, $matches);
+            $Ret[] = array_slice($matches, 1);
+        }
+        return $Ret;
+    }
+
     private static function getColValueInTextTable($table) {
         $Rows = explode("\n", $table);
         $len = count($Rows);
@@ -789,27 +862,6 @@ class Text {
         return array_values($Rows);
     }
 
-    private static function getVideoResolutionInBDInfo($str) {
-        if (preg_match("/(\d+p)/mi", $str, $match)) {
-            return $match[1];
-        } else {
-            return false;
-        }
-    }
-    private static function getVideoAspectRatioInBDInfo($str) {
-        if (preg_match("/(\d+:\d+)/mi", $str, $match)) {
-            return $match[1];
-        } else {
-            return false;
-        }
-    }
-    private static function getVideoFrameRateInBDInfo($str) {
-        if (preg_match("/\/(.+) ?fps/mi", $str, $match)) {
-            return $match[1];
-        } else {
-            return false;
-        }
-    }
     private static function getAudioChannelsInBDInfo($str) {
         if (preg_match("/(\d\.\d)/mi", $str, $match)) {
             return $match[1];
@@ -864,11 +916,21 @@ class Text {
                         $Str .= '<a href="user.php?action=search&amp;search=' . urlencode($Block['Val']) . '">' . $Block['Val'] . '</a>';
                         break;
                     case 'artist':
-                        $Str .= '<a href="artist.php?artistname=' . urlencode(Format::undisplay_str($Block['Val'])) . '">' . $Block['Val'] . '</a>';
+                        $Str .= '<a href="artist.php?artistname=' . urlencode($Block['Val']) . '">' . $Block['Val'] . '</a>';
                         break;
                     case 'rule':
                         $Rule = trim(strtolower($Block['Val']));
-                        $Str .= '<a href="rules.php?p=upload#' . urlencode(Format::undisplay_str($Rule)) . '">' . preg_replace('/[aA-zZ]/', '', $Block['Val']) . '</a>';
+                        $Page = '';
+                        $RV = explode('#', $Rule);
+                        if (count($RV) == 1) {
+                            $Num = $RV[0];
+                            $Str .= '<a href="rules.php?p=upload#' . urlencode(Format::undisplay_str($Num)) . '">' . 'upload#' . $Num . '</a>';
+                        } else {
+                            $Page = $RV[0];
+                            $Num = $RV[1];
+                            $Str .= '<a href="rules.php?p=' . $Page . '#' . urlencode(Format::undisplay_str($Num)) . '">' . $Rule . '</a>';
+                        }
+
                         break;
                     case 'torrent':
                         $Pattern = '/(' . SITELINK_REGEX . '\/torrents\.php.*[\?&]id=)?(\d+)($|&|\#).*/i';
@@ -976,7 +1038,7 @@ class Text {
                         self::$InQuotes--;
                         break;
                     case 'hide':
-                        $Str .= '<strong>' . (($Block['Attr']) ? $Block['Attr'] : Lang::get('user.hidden_text')) . '</strong>: <a href="javascript:void(0);" onclick="BBCode.spoiler(this);">Show</a>';
+                        $Str .= '<strong>' . (($Block['Attr']) ? $Block['Attr'] : t('server.user.hidden_text')) . '</strong>: <a href="javascript:void(0);" onclick="BBCode.spoiler(this);">Show</a>';
                         $Str .= '<blockquote class="hidden spoiler">' . self::to_html($Block['Val']) . '</blockquote>';
                         break;
                     case 'mature':
@@ -992,6 +1054,16 @@ class Text {
                         }
                         break;
                     case 'img':
+                        $resize = '';
+                        if (!empty($Block['Attr'])) {
+                            $Elements = explode('x', $Block['Attr']);
+                            // Width
+                            if (!empty($Elements[0]))
+                                $resize .= 'width="' . intval($Elements[0]) . '" ';
+                            // Height
+                            if (!empty($Elements[1]))
+                                $resize .= 'height="' . intval($Elements[1]) . '" ';
+                        }
                         if (self::$NoImg > 0 && self::valid_url($Block['Val'])) {
                             $Str .= '<a rel="noreferrer" target="_blank" href="' . $Block['Val'] . '">' . $Block['Val'] . '</a> (image)';
                             break;
@@ -1002,9 +1074,9 @@ class Text {
                             //$LocalURL = self::local_url($Block['Val']);
                             $LocalURL = false;
                             if ($LocalURL) {
-                                $Str .= '<img loading="lazy" class="scale_image" onclick="lightbox.init(this, $(this).width());" alt="' . $Block['Val'] . '" src="' . $LocalURL . '" />';
+                                $Str .= '<img loading="lazy" class="scale_image" onclick="lightbox.init(this, $(this).width());" alt="' . $Block['Val'] . '" src="' . $LocalURL . '" ' . $resize . '/>';
                             } else {
-                                $Str .= '<img loading="lazy" class="scale_image" onclick="lightbox.init(this, $(this).width());" alt="' . $Block['Val'] . '" src="' . ImageTools::process($Block['Val']) . '" />';
+                                $Str .= '<img loading="lazy" class="scale_image" onclick="lightbox.init(this, $(this).width());" alt="' . $Block['Val'] . '" src="' . ImageTools::process($Block['Val']) . '" ' . $resize . '/>';
                             }
                         }
                         break;
@@ -1072,7 +1144,7 @@ class Text {
                         ) {
                             $TableStyle = ' style="width: ' . intval($Block['Attr']) . '%;"';
                         }
-                        $Str .= "<div class=\"TalbeContainer\"><table class=\"Table\"$TableStyle>";
+                        $Str .= "<div class=\"TalbeContainer\"><table class=\"Table\" $TableStyle>";
                         foreach ($Block['Val'] as $tr) {
                             if (is_string($tr)) {
                                 $tr = trim($tr);
@@ -1099,7 +1171,7 @@ class Text {
                                     $Str .= '</tr>';
                                 }
                             } else {
-                                $Str .= self::to_html([$tr]);
+                                $Str .=  self::to_html([$tr]);
                             }
                         }
                         $Str .= '</table></div>';
@@ -1160,44 +1232,46 @@ class Text {
                         ];
                         $BDInfo["General"][] = [
                             "Container" => "BDAV",
-                            "Runtime" => self::getval($Block['Val'], "Length"),
+                            "Runtime" => trim(self::getval($Block['Val'], "Length")),
                             "Size" => Format::get_size(str_replace(',', '', trim(self::getval($Block['Val'], "Size"), 'bytes'))),
                         ];
                         $Str .= "<div>";
                         $Str .= "<a data-action='toggle-mediainfo' href='#'>";
-                        $Str .= Lang::get('index.details');
+                        $Str .= t('server.index.details');
                         $Str .= "</a> | " . $Title . "</div><div class='hidden'><pre class='MediaInfoText' variant='bdinfo'>" . $Block['Val'] . "</pre></div>";
                         $VideoAudioSubTitle = stristr($Block['Val'], "VIDEO:");
                         $VideoText = rtrim(substr($VideoAudioSubTitle, 0, stripos($VideoAudioSubTitle, "AUDIO:")));
-                        $TableValues = self::getColValueInTextTable($VideoText);
+                        $TableValues = self::parseBDInfoVideo($VideoText);
+                        $VideoInfo = [
+                            "Codec" => "",
+                            "Resolution" => "",
+                            "Bit rate" => "",
+                            "Bit depth" => "",
+                            "Frame rate" => "",
+                            "Aspect ratio" => "",
+                            //"BPP" => self::getval($Section, "Bits\/\(Pixel\*Frame\)"),
+                        ];
                         if ($TableValues) {
                             foreach ($TableValues as $TableValue) {
-                                $VideoInfo = [
-                                    "Codec" => ltrim($TableValue[0], '* '),
-                                    //"Bit depth" => self::getval($Section, "Bit depth"),
-                                    "Resolution" => self::getVideoResolutionInBDInfo($TableValue[2]),
-                                    "Aspect ratio" => self::getVideoAspectRatioInBDInfo($TableValue[2]),
-                                    "Frame rate" => self::getVideoFrameRateInBDInfo($TableValue[2]),
-                                    "Bit rate" => $TableValue[1],
-                                    //"Aspect ratio" => self::getval($Section, "Display aspect ratio"),
-                                    //"BPP" => self::getval($Section, "Bits\/\(Pixel\*Frame\)"),
-                                ];
+                                list($Resolution, $FPS, $AspectRatio,,, $Bits,, $HDRFormat) = explode('/', $TableValue[2]);
+                                $VideoInfo["Codec"] = ltrim($TableValue[0], '* ');
+                                $VideoInfo["Resolution"] = trim($Resolution);
+                                $VideoInfo["Bit rate"] = $TableValue[1];
+                                $VideoInfo["Bit depth"] = trim($Bits);
+                                $VideoInfo["Frame rate"] = trim($FPS);
+                                $VideoInfo["Aspect ratio"] = trim($AspectRatio);
                                 $BDInfo["Video"][] = $VideoInfo;
                             }
                         } else {
-                            $VideoSummarys = self::getallval($Block['Val'], "Video");
-                            foreach ($VideoSummarys as $VS) {
+                            $VideoSummary = self::getallval($Block['Val'], "Video");
+                            foreach ($VideoSummary as $VS) {
                                 $VideoSummaryArray = explode('/', $VS);
-                                $VideoInfo = [
-                                    "Codec" => $VideoSummaryArray[0],
-                                    //"Bit depth" => self::getval($Section, "Bit depth"),
-                                    "Resolution" => $VideoSummaryArray[2],
-                                    "Aspect ratio" => $VideoSummaryArray[4],
-                                    "Frame rate" => $VideoSummaryArray[3],
-                                    "Bit rate" => $VideoSummaryArray[1],
-                                    //"Aspect ratio" => self::getval($Section, "Display aspect ratio"),
-                                    //"BPP" => self::getval($Section, "Bits\/\(Pixel\*Frame\)"),
-                                ];
+                                $VideoInfo["Codec"] = $VideoSummaryArray[0];
+                                $VideoInfo["Resolution"] = $VideoSummaryArray[2];
+                                $VideoInfo["Aspect ratio"] = $VideoSummaryArray[4];
+                                $VideoInfo["Frame rate"] = $VideoSummaryArray[3];
+                                $VideoInfo["Bit rate"] = $VideoSummaryArray[1];
+                                $VideoInfo["Bit depth"] = $VideoSummaryArray[6];
                                 $BDInfo["Video"][] = $VideoInfo;
                             }
                         }
@@ -1209,14 +1283,16 @@ class Text {
                         if (stripos($AudioText, "FILES:")) {
                             $AudioText = rtrim(substr($AudioText, 0, stripos($AudioText, "FILES:")));
                         }
-                        $TableValues = self::getColValueInTextTable($AudioText);
+                        $TableValues = self::parseBDInfoAudio($AudioText);
                         if ($TableValues) {
                             foreach ($TableValues as $Row) {
+                                list($channel,,, $bitDepth) = explode('/', $Row[3]);
                                 $AudioInfo = [
                                     "Language" => $Row[1],
                                     "Format" => $Row[0],
-                                    "Channels" => self::getAudioChannelsInBDInfo($Row[3]),
+                                    "Channels" => $channel,
                                     "Bit rate" => $Row[2],
+                                    "Bit depth" => $bitDepth,
                                 ];
                                 $AudioText = '';
                                 if ($AudioInfo['Language']) {
@@ -1306,11 +1382,11 @@ class Text {
                                     $VideoInfo = [
                                         "Codec" => self::getval($Section, "Format"),
                                         'Resolution' => '',
-                                        "Aspect ratio" => self::getval($Section, "Display aspect ratio"),
-                                        "Frame rate" => self::getval($Section, "Frame rate"),
                                         "Bit rate" => self::getval($Section, "Bit rate"),
                                         "Bit rate (N)" => self::getval($Section, "Nominal bit rate"),
-                                        //"Bit depth" => self::getval($Section, "Bit depth"),
+                                        "Bit depth" => self::getval($Section, "Bit depth"),
+                                        "Frame rate" => self::getval($Section, "Frame rate"),
+                                        "Aspect ratio" => self::getval($Section, "Display aspect ratio"),
                                         "Width" => self::getval($Section, "Width"),
                                         "Height" => self::getval($Section, "Height"),
                                         //"BPP" => self::getval($Section, "Bits\/\(Pixel\*Frame\)"),
@@ -1318,6 +1394,7 @@ class Text {
                                     if ($VideoInfo['Width'] && $VideoInfo['Height']) {
                                         $VideoInfo['Resolution'] = self::onlyDigit($VideoInfo['Width']) . " × " . self::onlyDigit($VideoInfo['Height']);
                                     }
+                                    unset($VideoInfo['Width'], $VideoInfo['Height']);
                                     if ($VideoInfo['Codec'] == "AVC") {
                                         if (!empty(self::getval($Section, "Encoding settings")) || str_contains(self::getval($Section, "Writing library"), 'x264')) {
                                             $VideoInfo['Codec'] = "x264";
@@ -1333,7 +1410,6 @@ class Text {
                                     } else {
                                         $VideoInfo['Codec'] = $VideoInfo['Codec'];
                                     }
-                                    unset($VideoInfo['Width'], $VideoInfo['Height']);
                                     $MediaInfo["Video"][] = $VideoInfo;
                                     break;
                                 case "A":
@@ -1343,6 +1419,7 @@ class Text {
                                         "Channels" => self::getval($Section, "Channel\(s\)"),
                                         "Bit rate" => self::getval($Section, "Bit rate"),
                                         "Title" => self::getval($Section, "Title"),
+                                        "Bit depth" => self::getval($Section, "Bit depth"),
                                     ];
                                     $AudioText = '';
                                     if ($AudioInfo['Language']) {
@@ -1382,7 +1459,7 @@ class Text {
                             }
                         }
                         $Str .= "<div><a data-action='toggle-mediainfo' href='#'>";
-                        $Str .= Lang::get('index.details') . "</a> | ";
+                        $Str .= t('server.index.details') . "</a> | ";
                         if (isset($MediaInfo['General'][0]) && $MediaInfo['General'][0]['Complete name']) {
                             $slash = strrpos($MediaInfo['General'][0]['Complete name'], '\\');
                             if (!$slash) {
@@ -1414,9 +1491,9 @@ class Text {
                         $Block['Val'] = str_replace("\r", "\n", $Block['Val']);
                         $Images = [];
                         foreach ($Block['Val'] as $value) {
-                            if (is_array($value) && isset($value['Attr'])) {
+                            if (is_array($value) && !empty($value['Attr'])) {
                                 $Images[] = "'" . $value['Attr'] . "'";
-                            } else if (is_array($value) && isset($value['Val'])) {
+                            } else if (is_array($value) && !empty($value['Val'])) {
                                 $Images[] = "'" . $value['Val'] . "'";
                             }
                         }
@@ -1678,26 +1755,6 @@ class Text {
         $Str = preg_replace("/\<img(.*)src=\"(.*)\"(.*)\>/", '[img]\\2[/img]', $Str);
         $Str = str_replace('<p>', '', $Str);
         $Str = str_replace('</p>', '<br />', $Str);
-        //return $Str;
         return str_replace(["<br />", "<br>"], "\n", $Str);
     }
 }
-/*
-
-// Uncomment this part to test the class via command line:
-function display_str($Str) {
-    return $Str;
-}
-function check_perms($Perm) {
-    return true;
-}
-$Str = "hello
-[pre]http://anonym.to/?http://whatshirts.portmerch.com/
-====hi====
-===hi===
-==hi==[/pre]
-====hi====
-hi";
-echo Text::full_format($Str);
-echo "\n"
-*/

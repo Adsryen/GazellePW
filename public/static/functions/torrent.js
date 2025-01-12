@@ -57,8 +57,7 @@ function ArtistManager() {
           break
       }
       if (elArtistList.children[i].children[0].tagName.toUpperCase() == 'A') {
-        var ArtistID =
-          elArtistList.children[i].children[0].href.match(/[?&]id=(\d+)/)[1]
+        var ArtistID = elArtistList.children[i].children[0].href.match(/[?&]id=(\d+)/)[1]
         var elBox = document.createElement('input')
         elBox.type = 'checkbox'
         elBox.id = 'artistmanager_box' + (i - importance + 1)
@@ -67,10 +66,7 @@ function ArtistManager() {
         elBox.onclick = function (e) {
           SelectArtist(e, this)
         }
-        elArtistList.children[i].insertBefore(
-          elBox,
-          elArtistList.children[i].children[0]
-        )
+        elArtistList.children[i].insertBefore(elBox, elArtistList.children[i].children[0])
         if (
           importance == 1 ||
           importance == 2 ||
@@ -118,37 +114,39 @@ function ArtistManager() {
     var elSubmitDiv = document.createElement('div')
     var elImportance = document.createElement('select')
     elImportance.name = 'importance'
+    elImportance.className = 'Input'
     elImportance.id = 'artists_importance'
     var elOpt = document.createElement('option')
     elOpt.value = 1
-    elOpt.innerHTML = lang.get('common.director')
+    elOpt.innerHTML = t('client.common.director')
     elImportance.appendChild(elOpt)
     elOpt = document.createElement('option')
     elOpt.value = 2
-    elOpt.innerHTML = lang.get('writter')
+    elOpt.innerHTML = t('client.common.writer')
     elImportance.appendChild(elOpt)
     elOpt = document.createElement('option')
     elOpt.value = 3
-    elOpt.innerHTML = lang.get('common.producer')
+    elOpt.innerHTML = t('client.common.producer')
     elImportance.appendChild(elOpt)
     elOpt = document.createElement('option')
     elOpt.value = 4
-    elOpt.innerHTML = lang.get('common.composer')
+    elOpt.innerHTML = t('client.common.composer')
     elImportance.appendChild(elOpt)
     elOpt = document.createElement('option')
     elOpt.value = 5
-    elOpt.innerHTML = lang.get('common.cinematographer')
+    elOpt.innerHTML = t('client.common.cinematographer')
     elImportance.appendChild(elOpt)
     elOpt = document.createElement('option')
     elOpt.value = 6
-    elOpt.innerHTML = lang.get('common.actor')
+    elOpt.innerHTML = t('client.common.actor')
     elImportance.appendChild(elOpt)
     elSubmitDiv.appendChild(elImportance)
     elSubmitDiv.appendChild(document.createTextNode(' '))
 
-    elSubmitDiv.className = 'body'
+    elSubmitDiv.className = 'FormOneLine'
     var elSubmit = document.createElement('input')
     elSubmit.type = 'button'
+    elSubmit.className = 'Button'
     elSubmit.value = 'Update'
     elSubmit.onclick = ArtistManagerSubmit
     elSubmitDiv.appendChild(elSubmit)
@@ -156,6 +154,7 @@ function ArtistManager() {
 
     var elDelButton = document.createElement('input')
     elDelButton.type = 'button'
+    elDelButton.className = 'Button'
     elDelButton.value = 'Delete'
     elDelButton.onclick = ArtistManagerDelete
     elSubmitDiv.appendChild(elDelButton)
@@ -200,11 +199,7 @@ function ArtistManagerSubmit() {
   if (
     Selection.length == 0 ||
     ($('#manager_action').raw().value == 'delete' &&
-      !confirm(
-        'Are you sure you want to delete ' +
-          Selection.length +
-          ' artists from this group?'
-      ))
+      !confirm('Are you sure you want to delete ' + Selection.length + ' artists from this group?'))
   ) {
     return
   }
@@ -217,9 +212,7 @@ function ArtistManagerSubmit() {
     MainSelectionCount == MainArtistCount
   ) {
     if (!$('.error_message').raw()) {
-      Snackbar.error(
-        'All groups need to have at least one main artist, composer, or DJ.'
-      )
+      Snackbar.error('All groups need to have at least one main artist, composer, or DJ.')
     }
     $('.error_message').raw().scrollIntoView()
     return
@@ -240,19 +233,13 @@ function DownVoteGroup(groupid, authkey) {
   }
   voteLock = true
   ajax.get(
-    'ajax.php?action=votefavorite&do=vote&groupid=' +
-      groupid +
-      '&vote=down' +
-      '&auth=' +
-      authkey,
+    'ajax.php?action=votefavorite&do=vote&groupid=' + groupid + '&vote=down' + '&auth=' + authkey,
     function (response) {
       if (response == 'noaction') {
         //No increment
       } else if (response == 'success') {
-        $('#downvotes').raw().innerHTML =
-          parseInt($('#downvotes').raw().innerHTML) + 1
-        $('#totalvotes').raw().innerHTML =
-          parseInt($('#totalvotes').raw().innerHTML) + 1
+        $('#downvotes').raw().innerHTML = parseInt($('#downvotes').raw().innerHTML) + 1
+        $('#totalvotes').raw().innerHTML = parseInt($('#totalvotes').raw().innerHTML) + 1
       }
     }
   )
@@ -269,20 +256,14 @@ function UpVoteGroup(groupid, authkey) {
   }
   voteLock = true
   ajax.get(
-    'ajax.php?action=votefavorite&do=vote&groupid=' +
-      groupid +
-      '&vote=up' +
-      '&auth=' +
-      authkey,
+    'ajax.php?action=votefavorite&do=vote&groupid=' + groupid + '&vote=up' + '&auth=' + authkey,
     function (response) {
       if (response == 'noaction') {
         //No increment
       } else if (response == 'success') {
         // Increment both the upvote count and the total votes count
-        $('#upvotes').raw().innerHTML =
-          parseInt($('#upvotes').raw().innerHTML) + 1
-        $('#totalvotes').raw().innerHTML =
-          parseInt($('#totalvotes').raw().innerHTML) + 1
+        $('#upvotes').raw().innerHTML = parseInt($('#upvotes').raw().innerHTML) + 1
+        $('#totalvotes').raw().innerHTML = parseInt($('#totalvotes').raw().innerHTML) + 1
       }
     }
   )
@@ -298,27 +279,17 @@ function UnvoteGroup(groupid, authkey) {
     return
   }
   voteLock = true
-  ajax.get(
-    'ajax.php?action=votefavorite&do=unvote&groupid=' +
-      groupid +
-      '&auth=' +
-      authkey,
-    function (response) {
-      if (response == 'noaction') {
-        //No increment
-      } else if (response == 'success-down') {
-        $('#totalvotes').raw().innerHTML =
-          parseInt($('#totalvotes').raw().innerHTML) - 1
-        $('#downvotes').raw().innerHTML =
-          parseInt($('#downvotes').raw().innerHTML) - 1
-      } else if (response == 'success-up') {
-        $('#totalvotes').raw().innerHTML =
-          parseInt($('#totalvotes').raw().innerHTML) - 1
-        $('#upvotes').raw().innerHTML =
-          parseInt($('#upvotes').raw().innerHTML) - 1
-      }
+  ajax.get('ajax.php?action=votefavorite&do=unvote&groupid=' + groupid + '&auth=' + authkey, function (response) {
+    if (response == 'noaction') {
+      //No increment
+    } else if (response == 'success-down') {
+      $('#totalvotes').raw().innerHTML = parseInt($('#totalvotes').raw().innerHTML) - 1
+      $('#downvotes').raw().innerHTML = parseInt($('#downvotes').raw().innerHTML) - 1
+    } else if (response == 'success-up') {
+      $('#totalvotes').raw().innerHTML = parseInt($('#totalvotes').raw().innerHTML) - 1
+      $('#upvotes').raw().innerHTML = parseInt($('#upvotes').raw().innerHTML) - 1
     }
-  )
+  })
   $('#vote_message').gshow()
   $('#unvote_message').ghide()
   $('#upvoted').ghide()
@@ -331,15 +302,42 @@ function BrowseExternalSub(torrentid) {
     $('#external_subtitle_container_' + torrentid)
       .gshow()
       .raw().innerHTML = '<h4>Loading...</h4>'
-    ajax.get(
-      'subtitles.php?action=ajax_get&torrentid=' + torrentid,
-      function (response) {
-        $('#external_subtitle_container_' + torrentid).raw().innerHTML =
-          response
-        globalapp.tooltipInit('#external_subtitle_container_' + torrentid)
-      }
-    )
+    ajax.get('subtitles.php?action=ajax_get&torrentid=' + torrentid, function (response) {
+      $('#external_subtitle_container_' + torrentid).raw().innerHTML = response
+      globalapp.tooltipInit('#external_subtitle_container_' + torrentid)
+    })
   } else {
     $('#external_subtitle_container_' + torrentid).gtoggle()
   }
+}
+
+function torrent_check(event) {
+  var id = event.data.id,
+    checked = event.data.checked
+  $.get(
+    'torrents.php',
+    {
+      action: 'torrent_check',
+      torrentid: id,
+      checked: checked,
+    },
+    function (data) {
+      var obj = eval('(' + data + ')')
+      if (obj.ret == 'success') {
+        if (checked == 1) {
+          $('#torrent' + id + '_check1').show()
+          $('#slot-torrent' + id + '_check1').show()
+          $('#torrent' + id + '_check0').hide()
+          $('#slot-torrent' + id + '_check0').hide()
+        } else {
+          $('#torrent' + id + '_check0').show()
+          $('#slot-torrent' + id + '_check0').show()
+          $('#torrent' + id + '_check1').hide()
+          $('#slot-torrent' + id + '_check1').hide()
+        }
+      } else {
+        alert('失败')
+      }
+    }
+  )
 }

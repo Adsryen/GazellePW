@@ -7,7 +7,7 @@ This page is run every 15 minutes, by cron.
 
 \*************************************************************************/
 
-set_time_limit(50000);
+set_time_limit(120000);
 ob_end_flush();
 gc_enable();
 
@@ -68,14 +68,10 @@ function run_task($Dir, $Task) {
     print("DONE! (" . number_format(microtime(true) - $TimeStart, 3) . ")" . $LineEnd);
 }
 
-$RunOnce = '';
 
 if (PHP_SAPI === 'cli') {
     if (!isset($argv[1]) || $argv[1] != CONFIG['SCHEDULE_KEY']) {
         error(403);
-    }
-    if (isset($argv[2])) {
-        $RunOnce = $argv[2];
     }
     for ($i = 2; $i < count($argv); $i++) {
         if ($argv[$i] === 'run_tasks') {
@@ -107,17 +103,14 @@ if (PHP_SAPI === 'cli') {
 
 if (check_perms('admin_schedule')) {
     authorize();
-    View::show_header('', '', 'PageScheduleHome');
-    echo '<pre>';
+    View::show_header(t('server.tools.schedule'), '', 'PageScheduleHome');
+?>
+    <div class="LayoutPage">
+        <div class="BodyHeader">
+            <h2 class="BodyHeader-nav"><?= t('server.tools.schedule') ?></h2>
+        </div>
+    <?
 }
-
-if ($RunOnce) {
-    echo "Running every run tasks...{$LineEnd}";
-    run_task('once', $RunOnce);
-    echo "{$LineEnd}";
-    exit(0);
-}
-
 
 $DB->query("
 	SELECT NextHour, NextDay, NextBiWeekly, NextMonth

@@ -51,6 +51,10 @@ if (isset($_GET['action'])) {
                         case 'upload-4':
                             require_once(CONFIG['SERVER_ROOT'] . '/sections/bonus/upload.php');
                             break;
+                        case 'recommend-movie-7':
+                        case 'recommend-movie-30':
+                            require_once(CONFIG['SERVER_ROOT'] . '/sections/bonus/recommend_movie.php');
+                            break;
                         default:
                             require_once(CONFIG['SERVER_ROOT'] . DEFAULT_PAGE);
                             break;

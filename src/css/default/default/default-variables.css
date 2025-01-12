@@ -10,7 +10,7 @@
   --global-fontSize-mobile: 14px;
   --global-fontSize-sm: 0.875rem;
   --global-fontSize-lg: 1.125rem;
-  --global-lineHeight: 1.5;
+  --global-lineHeight: 1.5em;
   --global-borderRadius: 5px;
   --global-space-default: 10px;
   --global-space-sm: 5px;
@@ -27,7 +27,7 @@
   --global-onHover-color-primary: rgba(0, 0, 0, 0.3);
   --global-onHover-color-onPrimary: #000;
   --global-color-border: #ccc;
-  --global-color-link: #004070;
+  --global-color-link: #1083c2;
   --global-onHover-color-link: #1958bd;
   --global-color-rewardButton: #da7171;
   --global-color-rewardButtonActive: gray;
@@ -118,6 +118,7 @@
   --HeaderDonate-progressBarBorder-border: 2px solid #004070;
   --HeaderDonate-progressBarBorder-onHover-border: 2px solid #1958bd;
   --HeaderLogo-filter: drop-shadow(0px 0px 1px #999);
+  --HeaderLogo-icon: url(../assets/loginlogo.png) center / contain no-repeat;
 
   /* Sidebar */
   --SidebarItem-background: var(--global-colorTransparent-box);
@@ -157,7 +158,7 @@
   --Button-default-onHover-color: var(--global-onHover-color-onPrimary);
   --Button-default-onHover-boxShadow: var(--Button-default-boxShadow);
   --Button-default-onHover-border: var(--Button-default-border);
-  --Button-primary-background: var(--Button-default-background);
+  --Button-primary-background: var(--HeaderAnnounceItem-link-background);
   --Button-primary-color: var(--Button-default-color);
   --Button-primary-border: var(--Button-default-border);
   --Button-primary-boxShadow: var(--Button-default-boxShadow);
@@ -188,7 +189,7 @@
   --TableTorrent-fontSize: var(--global-fontSize-sm);
   --TableTorrent-movieInfo-background: rgba(0, 0, 0, 0.15);
   --TableTorrent-category-background: rgba(0, 0, 0, 0.1);
-  --TableTorrent-title-background: rgba(0, 0, 0, 0.05);
+  --TableTorrent-title-background: rgba(0, 0, 0, 0.01);
   --TableTorrent-movieInfoTitle-color: black;
   --TableTorrent-movieInfoTitle-onHover-color: #323232;
   --TableTorrent-movieInfoYear-color: #777;
@@ -206,6 +207,8 @@
   --slotDiy-color: #00b8ea;
   --slotEmpty-color: #a7a7a7;
   --slotHighlightName-color: #ddd;
+  --TableTorrent-coverTag-background: #535353ba;
+  --TableTorrent-coverTag-color: white;
 
   /* Form */
   --Form-errorMessage-color: var(--global-color-warning);
@@ -227,7 +230,7 @@
 
   /* Progress */
   --Progress-bar-background: rgba(0, 0, 0, 0.05);
-  --Progress-value-background: rgba(122, 188, 255, 0.3);
+  --Progress-value-background: #1083c2;
 
   /* Chart */
   --Chart-color0: rgb(232, 193, 160);
@@ -238,9 +241,17 @@
   --Chart-color5: rgb(151, 227, 213);
   --Chart-background: none;
   --Chart-text: currentColor;
+  --Chart-text-hover: var(--global-onHover-color);
   --Chart-gridLine: #d0d7de;
   --Chart-axisText: #57606a;
   --Chart-axisLine: #d0d7de;
+
+  /* ProgressBar */
+  --ProgressBar-percent-color: #004070;
+  --ProgressBar-background: #004070;
+  --ProgressBar-onHover-background: #1958bd;
+  --ProgressBarBorder-border: 2px solid #004070;
+  --ProgressBarBorder-onHover-border: 2px solid #1958bd;
 
   /* End */
   --global-zIndex-default: 10;

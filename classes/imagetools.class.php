@@ -2,6 +2,7 @@
 
 interface ImageStorage {
     public function upload($Name, $Content);
+    public function multi_upload($Datas);
 }
 
 /**
@@ -32,9 +33,9 @@ class ImageTools {
      * Blacklisted sites
      * @var array $Blacklist Array of blacklisted hosts
      */
-    private static $Blacklist = array(
-        'tinypic.com'
-    );
+    private static $Blacklist = CONFIG['IMAGE_HOST_BLACKLIST'];
+
+    private static $Whitelist = CONFIG['IMAGE_HOST_WHITELIST'];
 
     /**
      * Array of image hosts that provide thumbnailing
@@ -112,6 +113,25 @@ class ImageTools {
     }
 
     /**
+     * Checks if a link's host is (not) good, otherwise displays an error.
+     * @param string $Url Link to an image
+     * @return boolean
+     */
+    public static function whitelisted($Url, $ShowError = true) {
+        foreach (self::$Whitelist as &$Value) {
+            $Whitelisted = stripos($Url, $Value);
+            if ($Whitelisted == true) {
+                return true;
+            }
+        }
+        $ParsedUrl = parse_url($Url);
+        if ($ShowError) {
+            error($ParsedUrl['host'] . ' is not an allowed image host. Please use a different host.');
+        }
+        return false;
+    }
+
+    /**
      * Checks to see if a link has a thumbnail
      * @param string $Url Link to an image
      * @return string|false Matched host or false
@@ -121,13 +141,27 @@ class ImageTools {
         return !empty(self::$Thumbs[$ParsedUrl['host']]);
     }
 
+    public static function match_minetype($Ext, $MineType) {
+        switch ($Ext) {
+            case 'jpg':
+                return in_array($MineType, ['image/jpeg', 'image/jpg']);
+            case 'jpeg':
+                return in_array($MineType, ['image/jpeg', 'image/jpg']);
+            case 'gif':
+                return in_array($MineType, ['image/gif']);
+            case 'png':
+                return in_array($MineType, ['image/png']);
+        }
+        return false;
+    }
+
     /**
      * Checks an extension
      * @param string $Ext Extension to check
      * @return boolean
      */
     public static function valid_extension($Ext) {
-        //      return @self::$Extensions[$Ext] === true;
+        $Ext = strtolower($Ext);
         return !empty(self::$Extensions[$Ext]) && (self::$Extensions[$Ext] === true);
     }
 
@@ -228,11 +262,6 @@ class ImageTools {
         }
 
         $ProcessedUrl = $Url;
-        /*
-        if (strpos($Url, 'dicimg.kshare.club') !== false) {
-            $ProcessedUrl .= "-cover";
-        }
-*/
         if ($Thumb) {
             $Extension = pathinfo($Url, PATHINFO_EXTENSION);
             if (self::thumbnailable($Url) && self::valid_extension($Extension)) {
@@ -278,5 +307,20 @@ class ImageTools {
             return "";
         }
         return self::$Provider->upload($Name, $data);
+    }
+
+    public static function multi_fetch_upload($Datas) {
+        $ContentDatas = [];
+        foreach ($Datas as $Data) {
+            $data = file_get_contents($Data['Url']);
+            $file_info = new finfo(FILEINFO_MIME_TYPE);
+            $mime_type = $file_info->buffer($data);
+            if (!self::match_minetype($Data['Ext'], $mime_type)) {
+                throw new Exception("ext not match: $mime_type");
+            }
+
+            $ContentDatas[] = ['Content' => $data, 'Name' => $Data['Name'], "MimeType" => $mime_type];
+        }
+        return self::$Provider->multi_upload($ContentDatas);
     }
 }

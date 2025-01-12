@@ -6,14 +6,12 @@ header('Content-Type: application/json; charset=utf-8');
 
 $FullName = rawurldecode($_GET['query']);
 
-$MaxKeySize = 4;
-if (strtolower(substr($FullName, 0, 4)) == 'the ') {
-    $MaxKeySize += 4;
-}
+$MaxKeySize = 50;
 $KeySize = min($MaxKeySize, max(1, strlen($FullName)));
 
 $Letters = strtolower(substr($FullName, 0, $KeySize));
-//$AutoSuggest = $Cache->get('autocomplete_artist_' . $KeySize . '_' . $Letters);
+
+$AutoSuggest = $Cache->get('autocomplete_artist_' . $KeySize . '_' . $Letters);
 
 if (!$AutoSuggest) {
     $Limit = (($KeySize === $MaxKeySize) ? 250 : 10);
@@ -21,12 +19,12 @@ if (!$AutoSuggest) {
 		SELECT
 			a.ArtistID,
 			a.Name,
-            wa.ChineseName
+            a.SubName,
+            a.IMDBID
 		FROM artists_group AS a
 			INNER JOIN torrents_artists AS ta ON ta.ArtistID=a.ArtistID
 			INNER JOIN torrents AS t ON t.GroupID=ta.GroupID
-            LEFT JOIN wiki_artists as wa ON a.RevisionID = wa.RevisionID
-		WHERE a.Name LIKE '" . db_string(str_replace('\\', '\\\\', $Letters), true) . "%' OR wa.ChineseName LIKE '" . db_string(str_replace('\\', '\\\\', $Letters), true) . "%'
+		WHERE a.Name LIKE '" . db_string(str_replace('\\', '\\\\', $Letters), true) . "%' OR a.SubName LIKE '" . db_string(str_replace('\\', '\\\\', $Letters), true) . "%'
 		GROUP BY ta.ArtistID
 		ORDER BY t.Snatched DESC
 		LIMIT $Limit");
@@ -41,9 +39,13 @@ $Response = array(
     'suggestions' => array()
 );
 foreach ($AutoSuggest as $Suggestion) {
-    list($ID, $Name, $CName) = $Suggestion;
-    if (stripos($Name, $FullName) === 0 || stripos($CName, $FullName) === 0) {
-        $Response['suggestions'][] = array('value' => $Name, 'data' => $ID);
+    list($ID, $Name, $SubName, $IMDBID) = $Suggestion;
+    if (stripos($Name, $FullName) === 0 || stripos($SubName, $FullName) === 0) {
+        $Value = $Name;
+        if ($SubName) {
+            $Value .= " ($SubName)";
+        }
+        $Response['suggestions'][] = array('value' => $Value, 'data' => $ID, 'name' => $Name, 'sub_name' => $SubName, 'imdb' => $IMDBID);
         if (++$Matched > 9) {
             break;
         }

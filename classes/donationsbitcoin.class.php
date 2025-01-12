@@ -1,4 +1,7 @@
 <?
+
+use Gazelle\Manager\Donation;
+
 class DonationsBitcoin {
     /**
      * Ask bitcoind for a list of all addresses that have received bitcoins
@@ -6,7 +9,7 @@ class DonationsBitcoin {
      * @return array (BitcoinAddress => Amount, ...)
      */
     public static function get_received() {
-        if (defined('BITCOIN_RPC_URL')) {
+        if (CONFIG['BITCOIN_RPC_URL']) {
             $Donations = BitcoinRpc::listreceivedbyaddress();
         }
         if (empty($Donations)) {
@@ -25,7 +28,7 @@ class DonationsBitcoin {
      * @return float balance
      */
     public static function get_balance() {
-        if (defined('BITCOIN_RPC_URL')) {
+        if (CONFIG['BITCOIN_RPC_URL']) {
             return BitcoinRpc::getbalance();
         }
     }
@@ -51,7 +54,7 @@ class DonationsBitcoin {
         if (!empty($Addr)) {
             return $Addr;
         } elseif ($GenAddress) {
-            if (defined('BITCOIN_RPC_URL')) {
+            if (CONFIG['BITCOIN_RPC_URL']) {
                 $NewAddr = BitcoinRpc::getnewaddress();
             }
             if (empty($NewAddr)) {
@@ -76,7 +79,7 @@ class DonationsBitcoin {
      * @return float amount
      */
     public static function get_total_received() {
-        if (defined('BITCOIN_RPC_URL')) {
+        if (CONFIG['BITCOIN_RPC_URL']) {
             $Accounts = BitcoinRpc::listreceivedbyaccount();
         }
         if (empty($Accounts)) {
@@ -159,7 +162,8 @@ class DonationsBitcoin {
             }
             $Debug->log_var($NewDonations, '$NewDonations');
             foreach (self::get_userids(array_keys($NewDonations)) as $Address => $UserID) {
-                Donations::regular_donate($UserID, $NewDonations[$Address], 'Bitcoin Parser', '', 'BTC');
+                $donation = new Donation;
+                $donation->regularDonate($UserID, $NewDonations[$Address], 'Bitcoin Parser', '', 'BTC');
                 self::store_donation($Address, $NewDonations[$Address]);
             }
             G::$Cache->cache_value('btc_total_received', $NewAmount, 0);

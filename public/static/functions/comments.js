@@ -109,62 +109,35 @@ function Quote(post, user, link) {
   }
 }
 
-function Edit_Form(post, key) {
+globalapp.editForm = function Edit_Form(post) {
   postid = post
-  var boxWidth, postuserid, pmbox, inputname
-  //If no edit is already going underway or a previous edit was finished, make the necessary dom changes.
+  var postuserid, pmbox
+
+  // iff no edit is already going underway or a previous edit was finished, make the necessary dom changes.
   if (!$('#editbox' + postid).results() || $('#editbox' + postid + '.hidden').results()) {
     $('#reply_box').ghide()
-    if (location.href.match(/torrents\.php/) || location.href.match(/artist\.php/)) {
-      boxWidth = '50'
-    } else {
-      boxWidth = '80'
-    }
     postuserid = $('#post' + postid + ' strong a')
       .attr('href')
       .split('=')[1]
     if (postuserid != userid) {
-      pmbox = lang.get('common.pm_user_on_edit', { postId: postid })
+      pmbox = t('client.common.pm_user_on_edit', { postId: postid })
     } else {
       pmbox = ''
     }
-    if (location.href.match(/forums\.php/)) {
-      inputname = 'post'
-    } else {
-      inputname = 'postid'
-    }
-    $('#bar' + postid).raw().cancel = $('#content' + postid).raw().innerHTML
+
     $('#bar' + postid).raw().oldbar = $('#bar' + postid).raw().innerHTML
-    $('#content' + postid).raw().innerHTML =
-      '<div id="preview' +
-      postid +
-      '"></div><form id="form' +
-      postid +
-      '" method="post" action="">' +
-      pmbox +
-      '<input type="hidden" name="auth" value="' +
-      authkey +
-      '" /><input type="hidden" name="key" value="' +
-      key +
-      '" /><input type="hidden" name="' +
-      inputname +
-      '" value="' +
-      postid +
-      '" /><textarea class="Input" id="editbox' +
-      postid +
-      '" onkeyup="resize(\'editbox' +
-      postid +
-      '\');" name="body" cols="' +
-      boxWidth +
-      '" rows="10"></textarea></form>'
+    $('#content' + post + ' .TableForumPostBody-text').ghide()
+    $('#content' + post + ' .TableForumPostBody-edit').gshow()
     $('#bar' + postid).raw().innerHTML =
-      '<input class="Button" type="button" value="Preview" onclick="Preview_Edit(' +
+      '<a href="#" type="button" value="Post" onclick="Save_Edit(' +
       postid +
-      ');" /><input class="Button" type="button" value="Post" onclick="Save_Edit(' +
+      '); return false;">' +
+      t('client.common.save') +
+      '</a> - <a href="#" type="button" value="Cancel" onclick="Cancel_Edit(' +
       postid +
-      ')" /><input class="Button" type="button" value="Cancel" onclick="Cancel_Edit(' +
-      postid +
-      ');" />'
+      '); return false;">' +
+      t('client.common.cancel') +
+      '</a>'
   }
   /* If it's the initial edit, fetch the post content to be edited.
    * If editing is already underway and edit is pressed again, reset the post
@@ -172,77 +145,51 @@ function Edit_Form(post, key) {
    */
   if (location.href.match(/forums\.php/)) {
     ajax.get('?action=get_post&post=' + postid, function (response) {
-      $('#editbox' + postid).raw().value = html_entity_decode(response)
-      resize('editbox' + postid)
+      $('#edit_content_' + postid).val(html_entity_decode(response))
+      resize('edit_content_' + postid)
     })
   } else {
     ajax.get('comments.php?action=get&postid=' + postid, function (response) {
-      $('#editbox' + postid).raw().value = html_entity_decode(response)
-      resize('editbox' + postid)
+      $('#edit_content_' + postid).val(html_entity_decode(response))
+      resize('edit_content_' + postid)
     })
   }
 }
 
 function Cancel_Edit(postid) {
-  var answer = confirm(lang.get('common.are_you_sure_you_want_to_cancel'))
+  var answer = confirm(t('client.common.are_you_sure_you_want_to_cancel'))
   if (answer) {
     $('#reply_box').gshow()
     $('#bar' + postid).raw().innerHTML = $('#bar' + postid).raw().oldbar
-    $('#content' + postid).raw().innerHTML = $('#bar' + postid).raw().cancel
+    $('#content' + postid + ' .TableForumPostBody-text').gshow()
+    $('#content' + postid + ' .TableForumPostBody-edit').ghide()
   }
-}
-
-function Preview_Edit(postid) {
-  $('#bar' + postid).raw().innerHTML =
-    '<input class="Button" type="button" value="Editor" onclick="Cancel_Preview(' +
-    postid +
-    ');" /><input class="Button" type="button" value="Post" onclick="Save_Edit(' +
-    postid +
-    ')" /><input class="Button" type="button" value="Cancel" onclick="Cancel_Edit(' +
-    postid +
-    ');" />'
-  ajax.post('ajax.php?action=preview', 'form' + postid, function (response) {
-    $('#preview' + postid).raw().innerHTML = response
-    $('#editbox' + postid).ghide()
-  })
-}
-
-function Cancel_Preview(postid) {
-  $('#bar' + postid).raw().innerHTML =
-    '<input class="Button" type="button" value="Preview" onclick="Preview_Edit(' +
-    postid +
-    ');" /><input class="Button" type="button" value="Post" onclick="Save_Edit(' +
-    postid +
-    ')" /><input class="Button" type="button" value="Cancel" onclick="Cancel_Edit(' +
-    postid +
-    ');" />'
-  $('#preview' + postid).raw().innerHTML = ''
-  $('#editbox' + postid).gshow()
 }
 
 function Save_Edit(postid) {
   $('#reply_box').gshow()
   if (location.href.match(/forums\.php/)) {
-    ajax.post('forums.php?action=takeedit', 'form' + postid, function (response) {
-      $('#bar' + postid).raw().innerHTML =
-        '<a href="reports.php?action=report&amp;type=post&amp;id=' + postid + '" class="brackets">Report</a>'
-      $('#preview' + postid).raw().innerHTML = response
-      $('#editbox' + postid).ghide()
+    ajax.post('forums.php?action=takeedit', 'edit_form_' + postid, function (response) {
+      $('#bar' + postid).raw().innerHTML = $('#bar' + postid).raw().oldbar
       $('#pmbox' + postid).ghide()
+      $('#content' + postid + ' .TableForumPostBody-text').html(response)
+      $('#content' + postid + ' .TableForumPostBody-text').gshow()
+      $('#content' + postid + ' .TableForumPostBody-edit').ghide()
     })
   } else {
-    ajax.post('comments.php?action=take_edit', 'form' + postid, function (response) {
-      $('#bar' + postid).raw().innerHTML = ''
-      $('#preview' + postid).raw().innerHTML = response
-      $('#editbox' + postid).ghide()
+    ajax.post('comments.php?action=take_edit', 'edit_form_' + postid, function (response) {
+      $('#bar' + postid).raw().innerHTML = $('#bar' + postid).raw().oldbar
       $('#pmbox' + postid).ghide()
+      $('#content' + postid + ' .TableForumPostBody-text').html(response)
+      $('#content' + postid + ' .TableForumPostBody-text').gshow()
+      $('#content' + postid + ' .TableForumPostBody-edit').ghide()
     })
   }
 }
 
 function Delete(post) {
   postid = post
-  if (confirm(lang.get('common.common.are_you_sure_you_wish_to_delete_this_post')) == true) {
+  if (confirm(t('client.common.are_you_sure_you_wish_to_delete_this_post')) == true) {
     if (location.href.match(/forums\.php/)) {
       ajax.get('forums.php?action=delete&auth=' + authkey + '&postid=' + postid, function () {
         $('#post' + postid).ghide()
@@ -327,6 +274,17 @@ function LoadEdit(type, post, depth) {
   ajax.get('forums.php?action=ajax_get_edit&postid=' + post + '&depth=' + depth + '&type=' + type, function (response) {
     $('#content' + post).raw().innerHTML = response
   })
+}
+
+function Refresh($Lite) {
+  if ($Lite) {
+    ajax.get('forums.php?action=ajax_refresh&auth=' + authkey + '&news_flush_lite=1', function (response) {
+      alert('Success!')
+    })
+  } else {
+    ajax.get('forums.php?action=ajax_refresh&auth=' + authkey + '&news_flush=1', function (response) {})
+    alert('Success!')
+  }
 }
 
 function AddPollOption(id) {

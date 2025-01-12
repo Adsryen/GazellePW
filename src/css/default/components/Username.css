@@ -1,8 +1,8 @@
 .Username {
   display: inline-flex;
-  gap: var(--global-space-sm);
   align-items: center;
   flex-wrap: wrap;
+  gap: 3px;
 }
 .TableTop10User .Username {
   flex-wrap: nowrap;

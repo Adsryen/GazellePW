@@ -6,7 +6,7 @@ HtmlText mdx
 */
 
 .HtmlText[mdx] {
-  padding: 16px 32px;
+  padding: 10px 10px;
 }
 
 /* Check Upload Rules page */
@@ -40,6 +40,10 @@ HtmlText mdx
 }
 .HtmlText ul {
   list-style-type: disc;
+}
+
+.HtmlText ol {
+  list-style-type: decimal;
 }
 
 .HtmlText li {

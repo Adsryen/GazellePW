@@ -1,17 +1,3 @@
-.SearchInbox-row {
-  display: flex;
-  gap: var(--global-space-default);
-}
-
-.SearchInbox-actions {
-  margin-left: auto;
-}
-
-#inbox .vertical_space,
-#staffpm .vertical_space {
-  margin-bottom: var(--global-space-lg);
-}
-
 #inbox div.box.vertical_space {
   background: var(--Box-background);
   color: var(--Box-color);

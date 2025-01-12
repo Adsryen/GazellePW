@@ -4,9 +4,9 @@ date_default_timezone_set('UTC');
 
 $CONFIG = [];
 
-// Main settings
-$CONFIG['SITE_NAME'] = "GPW DEV"; //The name of your site
-$CONFIG['SITE_HOST'] = "localhost"; // The host for your site (e.g. localhost, orpheus.network)
+// 主设置 | Main settings
+$CONFIG['SITE_NAME'] = "GPW DEV"; //站名 | The name of your site
+$CONFIG['SITE_HOST'] = "localhost"; //站点域名 | The host for your site (e.g. localhost, orpheus.network)
 $CONFIG['SITE_URL'] = "http://${CONFIG['SITE_HOST']}:9000"; // The base URL to access the site (e.g. http://localhost:8080, https://orpheus.network)
 $CONFIG['SERVER_ROOT'] = "/var/www"; //The root of the server, used for includes, purpose is to shorten the path string
 $CONFIG['ANNOUNCE_URL'] = "http://${CONFIG['SITE_HOST']}:2710"; //Announce HTTP URL
@@ -25,9 +25,10 @@ $CONFIG['DOUBAN_API_URL'] = "DOUBAN_API_URL";
 // Keys
 $CONFIG['ENCKEY'] = "OL9n0m2JxhBxYyMvXWJg"; //Random key. The key for encryption
 $CONFIG['SITE_SALT'] = ''; // TODO: not used. Random key. Default site wide salt for passwords, DO NOT LEAVE THIS BLANK/CHANGE AFTER LAUNCH!
-$CONFIG['SCHEDULE_KEY'] = ""; // Random key. This key must be the argument to schedule.php for the schedule to work.
+$CONFIG['SCHEDULE_KEY'] = "OL9n0m2JxhBxYyMvXWJg"; // Random key. This key must be the argument to schedule.php for the schedule to work.
 $CONFIG['RSS_HASH'] = ""; //Random key. Used for generating unique RSS auth key.
 $CONFIG['CRYPT_HASH_PREFIX'] = "$2y$07$"; // TODO: not used.
+$CONFIG['GEOIP_LICENSE_KEY'] = '';
 
 // MySQL details
 $CONFIG['SQLHOST'] = "mysql"; //The MySQL host ip/fqdn
@@ -38,7 +39,7 @@ $CONFIG['SQLPORT'] = 3306; //The MySQL port to connect on
 $CONFIG['SQLSOCK'] = "/var/run/mysqld/mysqld.sock";
 
 // Memcached details
-$MemcachedServers = [
+$CONFIG['MemcachedServers'] = [
     // unix sockets are fast, and other people can't telnet into them
     ['host' => 'memcached', 'port' => 11211, 'buckets' => 1],
 ];
@@ -50,9 +51,9 @@ $CONFIG['TG_DISBALE_CHANNEL'] = "https://t.me/disabled";
 $CONFIG['TG_GROUP'] = "https://t.me/group";
 
 // Sphinx details
-$CONFIG['SPHINX_HOST'] = 'sphinxsearch';  // TODO: not used
+$CONFIG['SPHINX_HOST'] = 'manticoresearch';  // TODO: not used
 $CONFIG['SPHINX_PORT'] = 9312; // TODO: not used
-$CONFIG['SPHINXQL_HOST'] = "sphinxsearch";
+$CONFIG['SPHINXQL_HOST'] = "manticoresearch";
 $CONFIG['SPHINXQL_PORT'] = 9306;
 $CONFIG['SPHINXQL_SOCK'] = false;
 $CONFIG['SPHINX_MAX_MATCHES'] = 1000; // Must be <= the server's max_matches variable (default 1000)
@@ -83,9 +84,15 @@ $CONFIG['OPEN_REGISTRATION_TO'] = "2032-01-03 23:59";
 $CONFIG['OPEN_REGISTRATION_EMAIL'] = [];
 $CONFIG['NOT_ALLOWED_REGISTRATION_EMAIL'] = [];
 
+# Close login page
+$CONFIG['CLOSE_LOGIN'] = false;
+$CONFIG['CLOSE_REDIRECT_URL'] = "";
+
 $CONFIG['USER_LIMIT'] = 5000; //The maximum number of users the site can have, 0 for no limit
 
 $CONFIG['REQUEST_TAX'] = 0.0; //Percentage Tax (0 - 1) to charge users on making requests
+$CONFIG['REQUEST_MIN_VOTE'] = 1 * 1024 * 1024 * 1024;
+$CONFIG['REQUEST_FILL_FREE_HOUR'] = 0;
 
 $CONFIG['STARTING_UPLOAD'] = 3221225472; //Upload given to newly registered users, in bytes using IEC standard (1024 bytes per KiB)
 
@@ -96,13 +103,15 @@ $CONFIG['BLOCK_OPERA_MINI'] = false; //Set to true to block Opera Mini proxy
 $CONFIG['SYSTEM_USER_ID'] = 0; // ID for user to create "system" threads under (e.g. Edit Requests)
 $CONFIG['TRASH_FORUM_ID'] = 0; // ID of forum to send threads to when trash button is pressed
 $CONFIG['EDITING_FORUM_ID'] = 0; // ID of forum to send editing requests to
-$CONFIG['EDITING_TRASH_FORUM_ID'] = 0; // ID of forum to send editing threads to when trash button is pressed inCONFIG['EDITING_FORUM_ID']
+$CONFIG['INDEX_FORUM_IDS'] = []; // IDs of forums to display on the index page
 $CONFIG['ANNOUNCEMENT_FORUM_ID'] = 0;
 $CONFIG['NEWS_FORUM_ID'] = 0;
 $CONFIG['DONOR_FORUM'] = 0;
+$CONFIG['FEATURED_MOVIE_FORUM'] = 0;
+$CONFIG['STAFF_BLOG_FORUM'] = 0;
+$CONFIG['STAFF_FORUM'] = 0;
 
-$ForumsRevealVoters = [];
-$ForumsDoublePost = [];
+$CONFIG['ForumsRevealVoters'] = [];
 
 // Site option
 $CONFIG['ENABLE_BADGE'] = false; // Set to enable badge system
@@ -132,6 +141,8 @@ $CONFIG['TORRENTS_PER_PAGE'] = 50;
 $CONFIG['REQUESTS_PER_PAGE'] = 25;
 $CONFIG['MESSAGES_PER_PAGE'] = 25;
 $CONFIG['LOG_ENTRIES_PER_PAGE'] = 50;
+$CONFIG['DONATIONS_PER_PAGE'] = 50;
+$CONFIG['ARTICLES_PER_PAGE'] = 25;
 
 // Cache catalogues
 $CONFIG['THREAD_CATALOGUE'] = 500; // posts per cache key.
@@ -160,10 +171,10 @@ $CONFIG['LAB_CHAN'] = "#";
 $CONFIG['STATUS_CHAN'] = "#";
 
 // array to store external site credentials and API URIs, stored in cache to keep user sessions alive
-$ExternalServicesConfig = [
+$CONFIG['ExternalServicesConfig'] = [
     "PassThePopcorn" => [
         'type' => 'gazelle',
-        'inviter_id' => 1,
+        'inviter_id' => 2,
         'base_url' => 'https://passthepopcorn.me/',
         'api_path' => 'ajax.php?action=',
         'login_path' => 'login.php',
@@ -178,6 +189,10 @@ $ExternalServicesConfig = [
 // Image hosting service
 $CONFIG['IMAGE_PROVIDER'] = "local"; // Image storage service provider (local or minio)
 $CONFIG['IMAGE_URL'] = $CONFIG['SITE_URL']; // Image storage service base URL
+$CONFIG['IMAGE_PATH_PREFIX'] = "gpw";
+
+$CONFIG['IMAGE_HOST_BLACKLIST'] = [];
+$CONFIG['IMAGE_HOST_WHITELIST'] = [];
 
 // Minio service config
 $CONFIG['MINIO_ENDPOINT'] = "";
@@ -187,7 +202,10 @@ $CONFIG['MINIO_BUCKET'] = "";
 
 // Banner info
 $CONFIG['BANNER_URL'] = "/apply.php";
-$CONFIG['BANNER_TEXT'] = "Banner Notification";
+$CONFIG['BANNER_TEXT'] = [
+    "en" => "Banner Notification",
+    "zh-Hans" => "顶部通知"
+];
 
 $CONFIG['USER_CLASS'] = [
     'USER' => "2",
@@ -212,16 +230,50 @@ $CONFIG['USER_CLASS'] = [
 $CONFIG['INDEX_ARTICLE'] = 1;
 
 $CONFIG['DONATE_ARTILCE_ID'] = 2;
-$CONFIG['DONATE_MONTH_GOAL'] = 750;
+$CONFIG['DONATE_MONTH_GOAL'] = 75;
 
 $CONFIG['GLOBAL_FREELEECH'] = false;
 
-$WINDOW_CONFIG = [
-    'SITE_NAME' => $CONFIG['SITE_NAME'],
-    'TG_GROUP' => $CONFIG['TG_GROUP'],
-    'TG_DISBALE_CHANNEL' => $CONFIG['TG_DISBALE_CHANNEL'],
-    'BOT_HELP_CHAN' => $CONFIG['BOT_HELP_CHAN'],
-    'MAIL_HOST' => $CONFIG['MAIL_HOST'],
+$CONFIG['FEATURE_EMAIL_REENABLE'] = true;
+
+$CONFIG['FREE_PROBABILITY'] = 20;
+$CONFIG['TORRENT_UPLOAD_FREE'] = false;
+$CONFIG['TORRENT_UPLOAD_FREE_HOUR'] = 48;
+$CONFIG['PG_TORRENT_UPLOAD_FREE_HOUR'] = 168;
+
+$CONFIG['PUSH_CONFIG_SOCKET_LISTEN_ADDRESS'] = "127.0.0.1";
+$CONFIG['PUSH_CONFIG_SOCKET_LISTEN_PORT'] = 6789;
+
+
+$CONFIG['SECONDARY_CLASS'] = [];
+
+$CONFIG['UPLOAD_RANK_START_TIME'] = '0000-00-00 00:00:00';
+$CONFIG['UPLOAD_RANK_END_TIME'] = '0000-00-00 00:00:00';
+$CONFIG['UPLOAD_RANK_SHOW_END_TIME'] = '0000-00-00 00:00:00';
+$CONFIG['RELEASE_GROUP'] = [];
+$CONFIG['RELEASE_GROUP_MEMBER'] = [];
+
+$CONFIG['BaseRewardConfig'] = [
+    'UploadTorrent' => [
+        'Token' => 0,
+        'TokenValidDay' => 0,
+
+        'Invite' => 0,
+        'InviteValidDay' => 0,
+
+        'Bonus' => 0,
+        'BadgeID' => 0,
+    ],
 ];
 
-$WINDOW_DATA = [];
+$CONFIG['SecondaryClassAwardConfig'] = [
+    'TI_CHECK_COUNT' => 0,
+    'TI_PERMISSION_ID' => 0,
+    'TI_SALARY' => 0,
+    'UP_UPLOAD_COUNT' => 0,
+    'UPLOADER_PERMISSION_ID' => 0,
+    'UPLOADER_SALARY' => 0,
+    'SD_SEED_SIZE' => 0, //GB
+    'SEEDER_PERMISSION_ID' => 0,
+    'SEEDER_SALARY' => 0,
+];

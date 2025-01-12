@@ -23,8 +23,6 @@ if (
 $User = (int)$_GET['user'];
 
 if (!$Enabled = $Cache->get_value("enabled_$User")) {
-    require(CONFIG['SERVER_ROOT'] . '/classes/mysql.class.php');
-    $DB = new DB_MYSQL; //Load the database wrapper
     $DB->query("
 		SELECT Enabled
 		FROM users_main
@@ -45,8 +43,6 @@ switch ($_GET['feed']) {
     case 'feed_news':
         $Feed->channel('News', 'RSS feed for site news.');
         if (!$News = $Cache->get_value('news')) {
-            require(CONFIG['SERVER_ROOT'] . '/classes/mysql.class.php'); //Require the database wrapper
-            $DB = new DB_MYSQL; //Load the database wrapper
             $DB->query("
 				SELECT
 					ID,
@@ -65,7 +61,7 @@ switch ($_GET['feed']) {
             if (strtotime($NewsTime) >= time()) {
                 continue;
             }
-            echo $Feed->item($Title, Text::strip_bbcode($Body), "index.php#news$NewsID", CONFIG['SITE_NAME'] . ' Staff', '', '', $NewsTime);
+            echo $Feed->item($Title, Text::full_format($Body), "index.php#news$NewsID", CONFIG['SITE_NAME'] . ' Staff', '', '', $NewsTime);
             if (++$Count > 4) {
                 break;
             }
@@ -74,8 +70,6 @@ switch ($_GET['feed']) {
     case 'feed_blog':
         $Feed->channel('Blog', 'RSS feed for site blog.');
         if (!$Blog = $Cache->get_value('blog')) {
-            require(CONFIG['SERVER_ROOT'] . '/classes/mysql.class.php'); //Require the database wrapper
-            $DB = new DB_MYSQL; //Load the database wrapper
             $DB->query("
 				SELECT
 					b.ID,
@@ -89,36 +83,32 @@ switch ($_GET['feed']) {
 					LEFT JOIN users_main AS um ON b.UserID = um.ID
 				ORDER BY Time DESC
 				LIMIT 20");
-            $Blog = $DB->to_array();
+            $Blog = $DB->to_array(false, MYSQLI_BOTH, false);
             $Cache->cache_value('blog', $Blog, 1209600);
         }
         foreach ($Blog as $BlogItem) {
             list($BlogID, $Author, $AuthorID, $Title, $Body, $BlogTime, $ThreadID) = $BlogItem;
             if ($ThreadID) {
-                echo $Feed->item($Title, Text::strip_bbcode($Body), "forums.php?action=viewthread&amp;threadid=$ThreadID", CONFIG['SITE_NAME'] . ' Staff', '', '', $BlogTime);
+                echo $Feed->item($Title, Text::full_format($Body), "forums.php?action=viewthread&amp;threadid=$ThreadID", CONFIG['SITE_NAME'] . ' Staff', '', '', $BlogTime);
             } else {
-                echo $Feed->item($Title, Text::strip_bbcode($Body), "blog.php#blog$BlogID", CONFIG['SITE_NAME'] . ' Staff', '', '', $BlogTime);
+                echo $Feed->item($Title, Text::full_format($Body), "blog.php#blog$BlogID", CONFIG['SITE_NAME'] . ' Staff', '', '', $BlogTime);
             }
         }
         break;
     case 'feed_changelog':
         $Feed->channel('Gazelle Change Log', 'RSS feed for Gazelle\'s changelog.');
         if (!$Changelog = $Cache->get_value('changelog')) {
-            require(CONFIG['SERVER_ROOT'] . '/classes/mysql.class.php');
-            require(CONFIG['SERVER_ROOT'] . '/classes/misc.class.php');
-
-            $DB = new DB_MYSQL;
             $DB->query("
 				SELECT Message, Author, Date(Time)
 				FROM changelog
 				ORDER BY Time DESC
 				LIMIT 20");
-            $Changelog = $DB->to_array();
+            $Changelog = $DB->to_array(false, MYSQLI_BOTH, false);
             $Cache->cache_value('changelog', $Changelog, 3600);
         }
         foreach ($Changelog as $Change) {
             list($Message, $Author, $Date) = $Change;
-            echo $Feed->item("$Date by $Author", $Message, 'tools.php?action=change_log', CONFIG['SITE_NAME'] . ' Staff', '', '', $Date);
+            echo $Feed->item("$Date by $Author", Text::full_format($Message), 'tools.php?action=change_log', CONFIG['SITE_NAME'] . ' Staff', '', '', $Date);
         }
         break;
     case 'torrents_all':
@@ -128,6 +118,10 @@ switch ($_GET['feed']) {
     case 'torrents_movie':
         $Feed->channel('Movie Torrents', 'RSS feed for all new movie torrents.');
         $Feed->retrieve('torrents_movie', $_GET['authkey'], $_GET['passkey']);
+        break;
+    case 'torrents_free':
+        $Feed->channel('Free Torrents', 'RSS feed for all new free torrent.');
+        $Feed->retrieve('torrents_free', $_GET['authkey'], $_GET['passkey']);
         break;
     default:
         // Personalized torrents
@@ -139,7 +133,7 @@ switch ($_GET['feed']) {
             // Specific personalized torrent notification channel
             $Feed->channel(display_str($_GET['name']), 'Personal RSS feed: ' . display_str($_GET['name']));
             $Feed->retrieve($_GET['feed'], $_GET['authkey'], $_GET['passkey']);
-        } elseif (!empty($_GET['name']) && substr($_GET['feed'], 0, 21) == 'torrents_bookmarks_t_') {
+        } elseif (substr($_GET['feed'], 0, 21) == 'torrents_bookmarks_t_') {
             // Bookmarks
             $Feed->channel('Bookmarked torrent notifications', 'RSS feed for bookmarked torrents.');
             $Feed->retrieve($_GET['feed'], $_GET['authkey'], $_GET['passkey']);

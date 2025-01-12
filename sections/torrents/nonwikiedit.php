@@ -20,60 +20,40 @@ if (!check_perms('torrents_edit')) {
 }
 
 
-if (check_perms('torrents_freeleech') && (isset($_POST['freeleech']) xor isset($_POST['neutralleech']) xor isset($_POST['off75leech']) xor isset($_POST['off50leech']) xor isset($_POST['off25leech']) xor isset($_POST['unfreeleech']))) {
-    if (isset($_POST['freeleech'])) {
-        $Free = 1;
-    } elseif (isset($_POST['neutralleech'])) {
-        $Free = 2;
-    } elseif (isset($_POST['off25leech'])) {
-        $Free = 11;
-    } elseif (isset($_POST['off50leech'])) {
-        $Free = 12;
-    } elseif (isset($_POST['off75leech'])) {
-        $Free = 12;
-    } else {
-        $Free = 0;
-    }
+if (!check_perms('torrents_freeleech')) {
+    error(403);
+}
 
-    if (isset($_POST['freeleechtype']) && in_array($_POST['freeleechtype'], array(0, 1, 2, 3))) {
-        $FreeType = $_POST['freeleechtype'];
-    } else {
+
+$Free = (int)$_POST['freeleech'];
+if (!in_array($Free, array(0, 1, 2, 11, 12, 13))) {
+    error(404);
+}
+$Properties['FreeLeech'] = $Free;
+
+if ($Free == 0) {
+    $FreeType = 0;
+} else {
+    $FreeType = (int)$_POST['freeleechtype'];
+    if (!in_array($Free, array(0, 1, 2, 3, 11, 12, 13))) {
         error(404);
     }
-
-    Torrents::freeleech_groups($GroupID, $Free, $FreeType);
+}
+$Properties['FreeLeechType'] = $FreeType;
+$LimitFree = isset($_POST['limit-time']) ? 1 : 0;
+if (in_array($Free, array(1, 11, 12, 13)) && $LimitFree) {
+    $FreeDate = db_string($_POST['free-date']);
+    $FreeTime = db_string(substr($_POST['free-time'], 0, 2));
 }
 
-//Escape fields
-$Year = db_string((int)$_POST['year']);
-// Get some info for the group log
-$DB->query("
-	SELECT Year
-	FROM torrents_group
-	WHERE ID = $GroupID");
-list($OldYear) = $DB->next_record();
-
-
-
-$DB->query("
-	UPDATE torrents_group
-	SET
-		Year = '$Year'
-	WHERE ID = $GroupID");
-
-if ($OldYear != $Year) {
-    $DB->query("
-		INSERT INTO group_log (GroupID, UserID, Time, Info)
-		VALUES ('$GroupID', " . $LoggedUser['ID'] . ", '" . sqltime() . "', '" . db_string("Year changed from $OldYear to $Year") . "')");
+if (isset($_POST['freeleechtype']) && in_array($_POST['freeleechtype'], array(0, 1, 2, 3))) {
+    $FreeType = $_POST['freeleechtype'];
+} else {
+    error(404);
 }
 
-$DB->query("
-	SELECT ID
-	FROM torrents
-	WHERE GroupID = '$GroupID'");
-while (list($TorrentID) = $DB->next_record()) {
-    $Cache->delete_value("torrent_download_$TorrentID");
-}
+Torrents::freeleech_groups($GroupID, $Free, $FreeType, $FreeDate . ' ' . $FreeTime . ':00');
+
 Torrents::update_hash($GroupID);
 $Cache->delete_value("torrents_details_$GroupID");
 

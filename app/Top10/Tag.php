@@ -3,13 +3,13 @@
 namespace Gazelle\Top10;
 
 class Tag extends \Gazelle\Base {
-
     public function getTopUsedTags($limit) {
         if (!$topUsedTags = $this->cache->get_value('topusedtag_' . $limit)) {
             $topUsedTags = $this->db->prepared_query("
                 SELECT
                     t.ID,
                     t.Name,
+                    t.SubName,
                     COUNT(tt.GroupID) AS Uses,
                     SUM(tt.PositiveVotes - 1) AS PositiveVotes,
                     SUM(tt.NegativeVotes - 1) AS NegativeVotes
@@ -32,6 +32,7 @@ class Tag extends \Gazelle\Base {
                 SELECT
                     t.ID,
                     t.Name,
+                    t.SubName,
                     COUNT(r.RequestID) AS Uses,
                     '',''
                 FROM tags AS t
@@ -53,6 +54,7 @@ class Tag extends \Gazelle\Base {
                 SELECT
                     t.ID,
                     t.Name,
+                    t.SubName,
                     COUNT(tt.GroupID) AS Uses,
                     SUM(tt.PositiveVotes - 1) AS PositiveVotes,
                     SUM(tt.NegativeVotes - 1) AS NegativeVotes

@@ -5,7 +5,7 @@ Where
   artist - show
   bookmarks - show
 
-TorrentCover variant="OneLine"
+TorrentCover variant="OneLine | FiveGrid"
   TorrentCover-item
     TorrentCover-imageContainer
         TorrentCover-image
@@ -13,10 +13,14 @@ TorrentCover variant="OneLine"
 
 .TorrentCover {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 200px);
-  justify-content: start;
+  grid-template-columns: repeat(auto-fill, 160px);
+  justify-content: center;
   column-gap: var(--global-space-lg);
   row-gap: var(--global-space-default);
+}
+.TorrentCover[variant='FiveGrid'] {
+  width: 880px;
+  margin: 0 auto;
 }
 @media (max-width: 768px) {
   .TorrentCover[variant='OneLine'] {
@@ -27,6 +31,7 @@ TorrentCover variant="OneLine"
 .TorrentCover[variant='OneLine'] {
   display: flex;
   overflow: auto;
+  justify-content: start;
 }
 @media (max-width: 768px) {
   .PageUserShow .TorrentCover {
@@ -43,9 +48,51 @@ TorrentCover variant="OneLine"
   word-break: break-all;
 }
 
+.TorrentCover-item .TorrentCover-title {
+  width: 160px;
+  color: var(--TableTorrent-movieInfoTitle-color);
+  padding-top: var(--global-space-sm);
+  justify-content: center;
+  display: flex;
+}
+
 .TorrentCover-imageContainer {
-  width: 200px;
-  height: 300px;
+  width: 160px;
+  height: 240px;
+  position: relative;
+}
+
+.TorrentCover-leftTopTag {
+  float: left;
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  z-index: 1000;
+  width: 26px;
+  display: flex;
+  justify-content: center;
+  border-bottom-right-radius: var(--global-borderRadius);
+  border-top-left-radius: var(--global-borderRadius);
+}
+
+.TorrentCover-imdbTag {
+  background-color: #fbbf14;
+  color: black;
+}
+
+.TorrentCover-rightBottomTag {
+  float: right;
+  position: absolute;
+  right: 0px;
+  bottom: 0px;
+  z-index: 1000;
+  color: var(--TableTorrent-coverTag-color);
+  background-color: var(--TableTorrent-coverTag-background);
+  border-top-left-radius: var(--global-borderRadius);
+  border-bottom-right-radius: var(--global-borderRadius);
+  padding-right: 4px;
+  padding-left: 2px;
+  font-size: 75%;
 }
 @media (max-width: 768px) {
   .TorrentCover[variant='OneLine'] .TorrentCover-imageContainer {

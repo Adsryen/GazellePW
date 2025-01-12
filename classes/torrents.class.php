@@ -2,13 +2,74 @@
 
 use Gazelle\Torrent\EditionType;
 use Gazelle\Torrent\EditionInfo;
+use Gazelle\Torrent\Region;
+use Gazelle\Torrent\Language;
 use Gazelle\Torrent\TorrentSlot;
-use Gazelle\Torrent\TorrentSlotType;
+use Gazelle\Torrent\Notification;
+use Illuminate\Support\Facades\File;
+use Gazelle\Util\Time;
 
 class Torrents {
-    const FILELIST_DELIM = 0xF7; // Hex for &divide; Must be the same as phrase_boundary in sphinx.conf!
+    const FILELIST_DELIM = 0xF7; // Hex for &divide; Must be the same as phrase_boundary in manticore.conf!
     const SNATCHED_UPDATE_INTERVAL = 3600; // How often we want to update users' snatch lists
     const SNATCHED_UPDATE_AFTERDL = 300; // How long after a torrent download we want to update a user's snatch lists
+
+    const Normal = 0;
+    const FREE = 1;
+    const Neutral = 2;
+    const OneFourthOff = 11;
+    const TwoFourthOff = 12;
+    const ThreeFourthOff = 13;
+
+    const Downloading = 1;
+    const Seeding = 2;
+
+    public static function tags($Group) {
+        $TorrentTags = $Group['TagList'];
+        if ($TorrentTags != '') {
+            $TorrentTags = explode(' ', $TorrentTags);
+        }
+        $Ret = Tags::get_sub_name($TorrentTags);
+        return implode(' ', array_values($Ret));
+    }
+    public static function format_region($Region, $Limit = 1) {
+        $Regions = array_map(function ($value) {
+            return Region::text($value);
+        }, array_slice(explode(',', $Region), 0, $Limit));
+        return  implode(', ', $Regions);
+    }
+
+    public static function format_language($Language, $Limit = 3) {
+        $Languages = array_map(function ($value) {
+            return Language::text($value);
+        }, array_slice(explode(',', $Language), 0, $Limit));
+        return implode(', ', $Languages);
+    }
+
+    public static function get_actual_size($Torrent) {
+        $Size = $Torrent['Size'];
+        switch ($Torrent['FreeTorrent']) {
+            case self::FREE:
+            case self::Neutral:
+                return 0;
+            case self::OneFourthOff:
+                return 0.75 * $Size;
+            case self::TwoFourthOff:
+                return 0.5 * $Size;
+            case self::ThreeFourthOff:
+                return 0.25 * $Size;
+            default:
+                return $Size;
+        }
+    }
+
+    public static function get_search_language($Language) {
+        $key = Lang::get_key('server.upload', $Language);
+        if (!empty($key)) {
+            return Lang::getWithLang($key, Lang::EN);
+        }
+        return 'invalid';
+    }
 
     public static function get_thumb_counts($GroupID) {
         G::$DB->query("
@@ -61,51 +122,48 @@ class Torrents {
 
             if (!$RevisionID) {
                 $SQL .= '
+				g.Name,
+				g.SubName,
+				g.Year,
 				g.WikiBody,
+                g.MainWikiBody,
 				g.WikiImage, 
 				g.IMDBID,
-				g.IMDBRating, 
-				g.Duration,
-				g.ReleaseDate,
-				g.Region, 
-				g.Language, 
-				g.RTRating, 
-				g.DoubanRating,
-				g.IMDBVote, 
-				g.DoubanVote, 
 				g.DoubanID, 
 				g.RTTitle,';
             } else {
                 $SQL .= '
+				w.Name,
+				w.SubName,
+				w.Year,
 				w.Body as WikiBody,
+                w.MainBody as MainWikiBody,
 				w.Image as WikiImage,
 				w.IMDBID,
-				w.IMDBRating, 
-				w.Duration,
-				w.ReleaseDate,
-				w.Region, 
-				w.Language,
-				w.RTRating, 
-				w.DoubanRating, 
-				g.IMDBVote, 
-				g.DoubanVote, 
-				g.DoubanID, 
-				g.RTTitle,';
+				w.DoubanID, 
+				w.RTTitle,';
             }
 
             $SQL .= "
+				g.Region, 
+				g.ReleaseDate,
+				g.Language,
+				g.Duration,
+				g.DoubanRating, 
+				g.DoubanVote, 
+				g.RTRating, 
+				g.IMDBVote, 
+				g.IMDBRating, 
 				g.ID,
-				g.Name,
-				g.Year,
+				g.IMDBRating, 
 				g.ReleaseType,
 				g.CategoryID,
 				g.Time,
-				GROUP_CONCAT(DISTINCT tags.Name ORDER BY `TagID` SEPARATOR '|') as TorrentTags,
-				GROUP_CONCAT(DISTINCT tags.ID SEPARATOR '|') as TorrentTagIDs,
-				GROUP_CONCAT(tt.UserID SEPARATOR '|') as TorrentTagUserIDs,
-				GROUP_CONCAT(tt.PositiveVotes SEPARATOR '|') as TagPositiveVotes,
-				GROUP_CONCAT(tt.NegativeVotes SEPARATOR '|') as TagNegativeVotes,
-				g.SubName
+				GROUP_CONCAT(DISTINCT tags.Name ORDER BY `TagID` SEPARATOR ' ') as TagList,
+				GROUP_CONCAT(DISTINCT tags.ID SEPARATOR ' ') as TorrentTagIDs,
+				GROUP_CONCAT(tt.UserID SEPARATOR ' ') as TorrentTagUserIDs,
+				GROUP_CONCAT(tt.PositiveVotes SEPARATOR ' ') as TagPositiveVotes,
+				GROUP_CONCAT(tt.NegativeVotes SEPARATOR ' ') as TagNegativeVotes
 			FROM torrents_group AS g
 				LEFT JOIN torrents_tags AS tt ON tt.GroupID = g.ID
 				LEFT JOIN tags ON tags.ID = tt.TagID";
@@ -121,7 +179,7 @@ class Torrents {
 			GROUP BY NULL";
 
             $DB->query($SQL);
-            $TorrentGroup = $DB->next_record(MYSQLI_ASSOC, ['Name', 'SubName', 'WikiBody']);
+            $TorrentGroup = $DB->next_record(MYSQLI_ASSOC, false);
             // Fetch the individual torrents
             $DB->query("
 			SELECT
@@ -188,7 +246,7 @@ class Torrents {
 			GROUP BY t.ID
 			ORDER BY t.ID");
 
-            $TorrentList = $DB->to_array('ID', MYSQLI_ASSOC, ['MediaInfo', 'Description']);
+            $TorrentList = $DB->to_array('ID', MYSQLI_ASSOC, ['MediaInfo']);
             uasort($TorrentList, 'Torrents::sort_torrent');
             if (count($TorrentList) === 0 && $ApiCall == false) {
                 header('Location: log.php?search=' . (empty($_GET['torrentid']) ? "Group+$GroupID" : "Torrent+$_GET[torrentid]"));
@@ -196,11 +254,7 @@ class Torrents {
             } elseif (count($TorrentList) === 0 && $ApiCall == true) {
                 return null;
             }
-            if (in_array(0, $DB->collect('Seeders'))) {
-                $CacheTime = 600;
-            } else {
-                $CacheTime = 3600;
-            }
+            $CacheTime = 600;
             $TorrentGroup['Torrents'] = $TorrentList;
             // Store it all in cache
             if (!$RevisionID) {
@@ -270,12 +324,30 @@ class Torrents {
             }
             $MovieWayIDs = implode(',', $MovieWayIDs);
             if ($MovieWayIDs) {
-                G::$DB->query("
-					SELECT
-						ID, Name, Year, TagList, ReleaseType, WikiImage, CategoryID, SubName, IMDBID, TrailerLink, IMDBRating, DoubanRating, RTRating, DoubanVote, IMDBVote, DoubanID, RTTitle, Region
-					FROM torrents_group
-					WHERE ID IN ($MovieWayIDs)");
-                while ($Group = G::$DB->next_record(MYSQLI_ASSOC, ['SubName', 'Name'])) {
+                G::$DB->query("SELECT
+						g.ID as ID, 
+                        g.Name as Name, 
+                        g.Year as Year, 
+                        GROUP_CONCAT(DISTINCT tags.Name ORDER BY `TagID` SEPARATOR ' ') as TagList,
+                        g.ReleaseType as ReleaseType, 
+                        g.WikiImage as WikiImage,
+                        g.CategoryID as CategoryID, 
+                        g.SubName as SubName, 
+                        g.IMDBID as IMDBID, 
+                        g.TrailerLink as TrailerLink, 
+                        g.IMDBRating as IMDBRating, 
+                        g.DoubanRating as DoubanRating, 
+                        g.RTRating as RTRating, 
+                        g.DoubanVote as DoubanVote, 
+                        g.IMDBVote as IMDBVote, 
+                        g.DoubanID as DoubanID, 
+                        g.RTTitle as RTTitle, 
+                        g.Region as Region
+					FROM torrents_group AS g
+                        LEFT JOIN torrents_tags AS tt ON tt.GroupID = g.ID
+				        LEFT JOIN tags ON tags.ID = tt.TagID
+					WHERE g.ID IN ($MovieWayIDs) Group by g.ID");
+                while ($Group = G::$DB->next_record(MYSQLI_ASSOC)) {
                     $NotFound[$Group['ID']] = $Group;
                     $NotFound[$Group['ID']]['Torrents'] = array();
                     $NotFound[$Group['ID']]['Artists'] = array();
@@ -343,7 +415,7 @@ class Torrents {
                             LEFT JOIN reportsv2 as rt on rt.TorrentID = t.id AND rt.Status != 'Resolved'
 						WHERE t.GroupID IN ($IDs)
 						GROUP BY t.ID ORDER BY t.ID");
-                    while ($Torrent = G::$DB->next_record(MYSQLI_ASSOC, ['MediaInfo'])) {
+                    while ($Torrent = G::$DB->next_record(MYSQLI_ASSOC, false)) {
                         $NotFound[$Torrent['GroupID']]['Torrents'][$Torrent['ID']] = $Torrent;
                     }
                 }
@@ -352,7 +424,7 @@ class Torrents {
 
             foreach ($NotFound as $GroupID => &$GroupInfo) {
                 uasort($GroupInfo['Torrents'], 'Torrents::sort_torrent');
-                G::$Cache->cache_value($Key . $GroupID, array('ver' => CACHE::GROUP_VERSION, 'd' => $GroupInfo), 0);
+                G::$Cache->cache_value($Key . $GroupID, array('ver' => CACHE::GROUP_VERSION, 'd' => $GroupInfo), 600);
             }
 
             $Found = $NotFound + $Found;
@@ -495,6 +567,14 @@ class Torrents {
         if ($Torrent['IsSnatched'] = self::has_snatched($Torrent['ID'])) {
             $Flags['IsSnatched'] = true;
         }
+        $State = self::torrent_state($Torrent['ID']);
+        if ($State == self::Downloading) {
+            $Torrent['IsDownloading'] = true;
+            $Flag['IsDownloading'] = true;
+        } else if ($State == self::Seeding) {
+            $Torrent['IsSeeding'] = true;
+            $Flag['IsSeeding'] = true;
+        }
     }
 
 
@@ -513,10 +593,9 @@ class Torrents {
 			INSERT INTO group_log
 				(GroupID, TorrentID, UserID, Info, Time, Hidden)
 			VALUES
-				($GroupID, $TorrentID, $UserID, '" . db_string($Message) . "', '" . sqltime() . "', $Hidden)");
+				($GroupID, $TorrentID, $UserID, '" . db_string($Message) . "', '" . Time::sqlTime() . "', $Hidden)");
         G::$DB->set_query_id($QueryID);
     }
-
 
     /**
      * Delete a torrent.
@@ -526,6 +605,7 @@ class Torrents {
      * @param string $OcelotReason The deletion reason for ocelot to report to users.
      */
     public static function delete_torrent($ID, $GroupID = 0, $OcelotReason = -1) {
+        // remove requests
         $QueryID = G::$DB->get_query_id();
         if (!$GroupID) {
             G::$DB->query("
@@ -550,7 +630,6 @@ class Torrents {
                 }
             }
         }
-
 
         G::$DB->query("
 			SELECT info_hash
@@ -615,9 +694,29 @@ class Torrents {
 			REPLACE INTO sphinx_delta (ID, Time)
 			VALUES ($ID, UNIX_TIMESTAMP())");
 
+        // remove requests
+        G::$DB->query("SELECT ID, SourceTorrent FROM requests WHERE GroupID = $GroupID");
+        $Requests = G::$DB->to_array(false, MYSQLI_ASSOC);
+        foreach ($Requests as $Request) {
+            $Link =  $Request['SourceTorrent'];
+            if (!preg_match('/' . TORRENT_REGEX . '/i', $Link, $Matches)) {
+                continue;
+            }
+            if ($Matches[2] != $ID) {
+                continue;
+            }
+            $RequestID = $Request['ID'];
+            break;
+        }
+        if (!empty($RequestID)) {
+            Requests::delete_request($RequestID, 0, 'System', 'Torrent deleted');
+        }
+
+
         G::$Cache->delete_value("torrent_download_$ID");
         G::$Cache->delete_value("torrent_group_$GroupID");
         G::$Cache->delete_value("torrents_details_$GroupID");
+        G::$Cache->delete_value("recommend_group");
         G::$DB->set_query_id($QueryID);
     }
 
@@ -809,18 +908,6 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
      */
     public static function update_hash($GroupID) {
         $QueryID = G::$DB->get_query_id();
-
-        G::$DB->query("
-			UPDATE torrents_group
-			SET TagList = (
-					SELECT REPLACE(GROUP_CONCAT(tags.Name SEPARATOR ' '), '.', '_')
-					FROM torrents_tags AS t
-						INNER JOIN tags ON tags.ID = t.TagID
-					WHERE t.GroupID = '$GroupID'
-					GROUP BY t.GroupID
-					)
-			WHERE ID = '$GroupID'");
-
         // Fetch album vote score
         G::$DB->query("
 			SELECT Score
@@ -833,13 +920,13 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         }
 
         // Fetch album artists
-        G::$DB->query("
-			SELECT GROUP_CONCAT(aa.Name separator ' ')
+        G::$DB->query(
+            "SELECT GROUP_CONCAT(aa.Name separator ' ')
 			FROM torrents_artists AS ta
-				JOIN artists_alias AS aa ON aa.AliasID = ta.AliasID
+				JOIN artists_alias AS aa ON aa.ArtistID = ta.ArtistID
 			WHERE ta.GroupID = $GroupID
-				AND ta.Importance IN ('1', '4', '5', '6')
-			GROUP BY ta.GroupID");
+			GROUP BY ta.GroupID"
+        );
         if (G::$DB->has_results()) {
             list($ArtistName) = G::$DB->next_record(MYSQLI_NUM, false);
         } else {
@@ -848,21 +935,31 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
 
         G::$DB->query("
 			REPLACE INTO sphinx_delta
-				(ID, GroupID, GroupName, TagList, Year, CategoryID, Time, ReleaseType, Size, Snatched, Seeders, Leechers, Scene, Jinzhuan, Allow,
-				FreeTorrent,Description, FileList, VoteScore, ArtistName, 
-				IMDBRating, DoubanRating, Region, Language, IMDBID, Resolution, Container, Source, Codec, SubTitles,
-                Diy, Buy, ChineseDubbed, SpecialSub)
+				(ID, GroupID, GroupName, 
+                TagList, 
+                Year, CategoryID, Time, ReleaseType, Size, Snatched, Seeders, Leechers, Scene, Jinzhuan, Allow,
+				FreeTorrent,Description, FileList, VoteScore, ArtistName, RemTitle,
+				IMDBRating, DoubanRating, RTRating, Region, Language, IMDBID, Resolution, Container, Source, Codec, Processing, Subtitles,
+                Diy, Buy, ChineseDubbed, SpecialSub, Checked)
 			SELECT
-				t.ID, g.ID, CONCAT_WS(' ', g.Name, g.SubName), TagList, Year, CategoryID, UNIX_TIMESTAMP(t.Time), ReleaseType,
+				t.ID, g.ID, CONCAT_WS(' ', g.Name, g.SubName), 
+                GROUP_CONCAT(DISTINCT tags.Name ORDER BY `TagID` SEPARATOR ' ') as TagList, 
+                Year, CategoryID, UNIX_TIMESTAMP(t.Time), ReleaseType,
 				Size, Snatched, Seeders,
 				Leechers, CAST(Scene AS CHAR), CAST(Jinzhuan AS CHAR), CAST(Allow AS CHAR), 
 				CAST(FreeTorrent AS CHAR),Description,
-				REPLACE(REPLACE(FileList, '_', ' '), '/', ' ') AS FileList, $VoteScore, '" . db_string($ArtistName) . "',
-				IMDBRating, DoubanRating, Region, Language, IMDBID, Resolution, Container, Source, Codec, Subtitles, 
-                Diy, Buy, ChineseDubbed, SpecialSub
+				(case when (t.Container = 'm2ts') then REPLACE(REPLACE(t.FilePath, '_', ' '), '/', ' ') else REPLACE(REPLACE(FileList, '_', ' '), '/', ' ') end) AS FileList, $VoteScore, '" . db_string($ArtistName) . "',
+				REPLACE(RemasterTitle, '/', ' '), 
+                IMDBRating, DoubanRating, RTRating,
+                REPLACE(SUBSTRING_INDEX(g.Region, ',', 1), ',', ' '),
+                REPLACE(SUBSTRING_INDEX(g.Language, ',', 2), ',', ' '),
+                IMDBID, Resolution, Container, Source, Codec, Processing,
+                t.Subtitles, Diy, Buy, ChineseDubbed, SpecialSub, Checked 
 			FROM torrents AS t
 				JOIN torrents_group AS g ON g.ID = t.GroupID
-			WHERE g.ID = $GroupID");
+                LEFT JOIN torrents_tags AS tt ON tt.GroupID = g.ID
+				LEFT JOIN tags ON tags.ID = tt.TagID
+			WHERE g.ID = $GroupID Group by t.ID");
 
         G::$Cache->delete_value("torrents_details_$GroupID");
         G::$Cache->delete_value("torrent_group_$GroupID");
@@ -871,7 +968,7 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         $ArtistInfo = Artists::get_artist($GroupID);
         foreach ($ArtistInfo as $Importances => $Importance) {
             foreach ($Importance as $Artist) {
-                G::$Cache->delete_value('artist_groups_' . $Artist['id']); //Needed for at least freeleech change, if not others.
+                G::$Cache->delete_value('artist_groups_' . $Artist['ArtistID']); //Needed for at least freeleech change, if not others.
             }
         }
 
@@ -1025,22 +1122,13 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         return implode(' / ', $t);
     }
 
-    public static function group_name($Group, $Link = true) {
-        global $LoggedUser;
-        $lang = Lang::getUserLang($LoggedUser['ID']);
-        $GroupName = $Group['Name'];
-        if (!empty($Group['SubName'])) {
-            if ($lang === Lang::CHS) {
-                $GroupName = $Group['SubName'];
-            } else {
-                $GroupName =  $Group['Name'] . ' | ' . $Group['SubName'];
-            }
-        }
+    public static function group_name($Group, $Link = true, $Class = '') {
+        $GroupName = Lang::choose_content($Group['Name'], $Group['SubName']);
         $Year = $Group['Year'];
         $Ret = $GroupName . ' (' . $Year . ')';
         if ($Link) {
             $GroupID = $Group['ID'];
-            $Ret = "<a href='torrents.php?id=$GroupID'>$Ret</a>";
+            $Ret = "<a class='$Class' href='torrents.php?id=$GroupID'>" . display_str($Ret) . "</a>";
         }
         return $Ret;
     }
@@ -1048,7 +1136,7 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         $Size = Format::get_size($Torrent['Size']);
         $Info = self::torrent_media_info($Torrent);
         $Group = $Torrent['Group'];
-        $GroupName = !empty($Group['SubName']) ? $Group['SubName'] : $Group['Name'];
+        $GroupName = Lang::choose_content($Group['Name'], $Group['SubName']);
         $Year = $Group['Year'];
         $Ret = $GroupName . ' (' . $Year . ') - ' . implode(' / ', $Info) . ($WithSize ? ' - ' . $Size : '');
         if ($WithLink) {
@@ -1115,8 +1203,8 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
             if ($Item == 'Processing' && !empty($Processing)) {
                 if ($Style) {
                     if ($Option['SettingTorrentTitle']['Alternative']) {
-                        if ($Data['Slot'] !== TorrentSlotType::None) {
-                            $Slot = TorrentSlot::slot_name($Data['Slot']);
+                        if ($Data['Slot'] != TorrentSlot::TorrentSlotTypeNone) {
+                            $Slot = TorrentSlot::slot_filter_name($Data['Slot']);
                             $Processing = icon("Torrent/slot_${Slot}");
                         }
                     }
@@ -1130,16 +1218,16 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
     }
 
     public static function torrent_simple_view($Group, $Torrent, $Link = true, $Option = []) {
-        $Option = array_merge(['Self' => true, 'Class' => ''], $Option);
         $GroupID = $Group['ID'];
         $TorrentID = $Torrent['ID'];
-        $TorrentInfo = Torrents::torrent_info($Torrent, true, $Option);
         $Class = $Option['Class'];
+        $TorrentInfo = Torrents::torrent_info($Torrent, true, $Option);
         if ($Link) {
             $TorrentInfo = "<a class='$Class' href='torrents.php?id=$GroupID&amp;torrentid=$TorrentID#torrent$TorrentID'>" . $TorrentInfo . "</a>";
         }
-        return Torrents::group_name($Group, $Link) . "&nbsp;&raquo;&nbsp;" . $TorrentInfo;
+        return "<span class='TorrentTitle'><span class='TorrentTitle-item group_name'>" . Torrents::group_name($Group, $Link, 'TorrentTitle-item') . "</span><span class='TorrentTitle-item'> - </span>" . $TorrentInfo . "</span>";
     }
+
 
     /**
      * Format the information about a torrent.
@@ -1152,8 +1240,12 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
     public static function torrent_info($Data, $ShowMedia = true, $Option = []) {
         $Option = array_merge(['Self' => true, 'Class' => ''], $Option);
         $Info = array();
-        $Separator = '/';
-        if ($ShowMedia) {
+        $Separator = '<span class="TorrentTitle-item"> / </span>';
+        $FileName = Torrents::filename($Data);
+
+        if ($Option['UseReleaseName'] && !empty($FileName)) {
+            $Info = ["<span class='TorrentTitle-item'>" . $FileName . "</span>"];
+        } else if ($ShowMedia) {
             $Info = self::torrent_media_info($Data, true, $Option);
         }
         $RemasterYearInfo = '';
@@ -1164,6 +1256,7 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         $t = [];
         if (!empty($Data['RemasterTitle'])) {
             $EditionInfo = explode(' / ', $Data['RemasterTitle']);
+            sort($EditionInfo);
             $remaster_labels = EditionInfo::allEditionKey(EditionType::Remaster);
             $t = array_filter(
                 $remaster_labels,
@@ -1201,28 +1294,33 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         if (!empty($Data['Subtitles'])) {
             $Subtitles = explode(',', $Data['Subtitles']);
             if (in_array('chinese_simplified', $Subtitles)) {
-                $Info[] = Format::torrent_label(Lang::get('torrents.chi'), 'tl_chi');
+                $Info[] = Format::torrent_label(t('server.torrents.chi'), 'tl_chi');
             } else if (in_array('chinese_traditional', $Subtitles)) {
-                $Info[] = Format::torrent_label(Lang::get('torrents.chi'), 'tl_chi');
+                $Info[] = Format::torrent_label(t('server.torrents.chi'), 'tl_chi');
             }
         }
         if ($Data['ChineseDubbed']) {
-            $Info[] = Format::torrent_label(Lang::get('torrents.cn_dub'), 'tl_cn_dub');
+            $Info[] = Format::torrent_label(t('server.torrents.cn_dub'), 'tl_cn_dub');
         }
         if ($Data['SpecialSub']) {
-            $Info[] = Format::torrent_label(Lang::get('torrents.se_sub'), 'tl_se_sub');
+            $Info[] = Format::torrent_label(t('server.torrents.se_sub'), 'tl_se_sub');
         }
-        if ($Data['Buy'] == '1' &&  $Data['Diy'] == '0') {
-            $Info[] = Format::torrent_label(Lang::get('torrents.buy'), 'bg tl_buy');
-        }
-        if ($Data['Diy'] == '1') {
-            $Info[] = Format::torrent_label(Lang::get('torrents.diy'), 'bg tl_diy');
-        }
+
         if ($Data['Jinzhuan'] == '1' && $Data['Allow'] == '0') {
-            $Info[] = Format::torrent_label(Lang::get('torrents.jinzhuan'), 'tl_exclusive');
+            $Info[] = Format::torrent_label(t('server.torrents.jinzhuan'), 'tl_exclusive');
         }
         if ($Data['Allow'] == '1') {
-            $Info[] = Format::torrent_label(Lang::get('torrents.allow'), 'tl_allow');
+            $Info[] = Format::torrent_label(t('server.torrents.allow'), 'tl_allow');
+        }
+        $OfficialReleaseGroup = false;
+        $ReleaseGroup = Users::get_release_group_by_id($Data['Makers'])['Name'];
+        if (empty($ReleaseGroup)) {
+            $ReleaseGroup = self::release_group($Data);
+        } else {
+            $OfficialReleaseGroup = true;
+        }
+        if (!$Option['UseReleaseName'] && $ReleaseGroup && $Option['SettingTorrentTitle']['ReleaseGroup']) {
+            $Info[] = "<span class='TorrentTitle-item is-releaseGroup " . ($OfficialReleaseGroup ? "bg tl_buy" : '') . "'>$ReleaseGroup</span>";
         }
         if (
             (!empty($Data['BadFiles'])) ||
@@ -1232,42 +1330,54 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
             (!empty($Data['CustomTrumpable'])) ||
             self::is_torrent_dead($Data)
         ) {
-            $Info[] = Format::torrent_label(Lang::get('torrents.trump'), 'tl_trumpable');
+            $Info[] = Format::torrent_label(t('server.torrents.trump'), 'tl_trumpable');
+        }
+        if (empty($OfficialReleaseGroup)) {
+            if ($Data['Buy'] == '1' &&  $Data['Diy'] == '0') {
+                $Info[] = Format::torrent_label(t('server.torrents.buy'), 'bg tl_buy');
+            }
+            if ($Data['Diy'] == '1') {
+                $Info[] = Format::torrent_label(t('server.torrents.diy'), 'bg tl_diy');
+            }
+        }
+        if (self::global_freeleech()) {
+            $Info[] = Format::torrent_label(t('server.torrents.fld'), 'tl_free bg torrent_discount free');
+        } else if (isset($Data['FreeTorrent'])) {
+            if ($Data['FreeTorrent'] == self::FREE) {
+                $Info[] = Format::torrent_label(t('server.torrents.fld'), 'tl_free bg torrent_discount free', ($Data['FreeEndTime'] ? t('server.torrents.free_left', ['Values' => [time_diff($Data['FreeEndTime'], 2, false)]]) : ""));
+            } else if ($Data['FreeTorrent'] == self::Neutral) {
+                $Info[] = Format::torrent_label('Neutral Leech!', 'bg torrent_discount neutral');
+            } else if ($Data['FreeTorrent'] == self::OneFourthOff) {
+                $Info[] = Format::torrent_label('-25%', 'bg torrent_discount one_fourth_off', ($Data['FreeEndTime'] ? t('server.torrents.free_left', ['Values' => [time_diff($Data['FreeEndTime'], 2, false)]]) : ""));
+            } else if ($Data['FreeTorrent'] == self::TwoFourthOff) {
+                $Info[] = Format::torrent_label('-50%', 'bg torrent_discount two_fourth_off', ($Data['FreeEndTime'] ? t('server.torrents.free_left', ['Values' => [time_diff($Data['FreeEndTime'], 2, false)]]) : ""));
+            } else if ($Data['FreeTorrent'] == self::ThreeFourthOff) {
+                $Info[] = Format::torrent_label('-75%', 'bg torrent_discount three_fourth_off', ($Data['FreeEndTime'] ? t('server.torrents.free_left', ['Values' => [time_diff($Data['FreeEndTime'], 2, false)]]) : ""));
+            }
         }
 
-        if (self::global_freeleech()) {
-            $Info[] = Format::torrent_label(Lang::get('torrents.fld'), 'tl_free bg torrent_discount free');
-        } else if (isset($Data['FreeTorrent'])) {
-            if ($Data['FreeTorrent'] == '1') {
-                $Info[] = Format::torrent_label(Lang::get('torrents.fld'), 'tl_free bg torrent_discount free', ($Data['FreeEndTime'] ? Lang::get('torrents.free_left', ['Values' => [time_diff($Data['FreeEndTime'], 2, false)]]) : ""));
-            } else if ($Data['FreeTorrent'] == '2') {
-                $Info[] = Format::torrent_label('Neutral Leech!', 'bg torrent_discount neutral');
-            } else if ($Data['FreeTorrent'] == '11') {
-                $Info[] = Format::torrent_label('-25%', 'bg torrent_discount one_fourth_off', ($Data['FreeEndTime'] ? Lang::get('torrents.free_left', ['Values' => [time_diff($Data['FreeEndTime'], 2, false)]]) : ""));
-            } else if ($Data['FreeTorrent'] == '12') {
-                $Info[] = Format::torrent_label('-50%', 'bg torrent_discount two_fourth_off', ($Data['FreeEndTime'] ? Lang::get('torrents.free_left', ['Values' => [time_diff($Data['FreeEndTime'], 2, false)]]) : ""));
-            } else if ($Data['FreeTorrent'] == '13') {
-                $Info[] = Format::torrent_label('-75%', 'bg torrent_discount three_fourth_off', ($Data['FreeEndTime'] ? Lang::get('torrents.free_left', ['Values' => [time_diff($Data['FreeEndTime'], 2, false)]]) : ""));
-            }
-        }
+        $Class = $Option['Class'];
         if ($Option['Self']) {
             if (!empty($Data['ReportID']) > 0) {
-                $Info[] = Format::torrent_label(Lang::get('torrents.reported'), 'tl_reported tips-reported');
+                $Info[] = Format::torrent_label(t('server.torrents.reported'), 'tl_reported tips-reported');
             }
             if (!empty($Data['PersonalFL'])) {
-                $Info[] = Format::torrent_label(Lang::get('torrents.pfl'), 'tl_free');
+                $Info[] = Format::torrent_label(t('server.torrents.pfl'), 'tl_free');
             }
             if (!empty($Data['IsSnatched'])) {
-                $Info[] = Format::torrent_label(Lang::get('torrents.snatched'));
+                $Class .=  ' ' . 'TorrentSnatched';
+            }
+            if (!empty($Data['IsDownloading'])) {
+                $Class .=  ' ' . 'TorrentDownloading';
+            }
+            if (!empty($Data['IsSeeding'])) {
+                $Class .=  ' ' . 'TorrentSeeding';
             }
         }
-        if ($Option['SettingTorrentTitle']['ReleaseGroup']) {
-            $ReleaseGroup = $Data['ReleaseGroup'] ?: self::release_group($Data);
-            if ($ReleaseGroup) {
-                $Info[] = "<span class='TorrenTitle-item is-releaseGroup'>$ReleaseGroup</span>";
-            }
+        if ($Option['ShowNew'] && time_ago($Data['Time']) < 600) {
+            $Info[] = Format::torrent_label(t('server.subtitles.new'), 'u-colorWarning');
         }
-        $Class = $Option['Class'];
+
         return "<span class='TorrentTitle $Class'>" . implode($Separator, $Info) . '</span>';
     }
 
@@ -1280,22 +1390,25 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         $Result = "<span class='TorrentTitle $Class u-sortable'>";
         $ResultInner = [];
         foreach ($Items as $Item) {
-            $ResultInner[] = "<span class='TorrentTitle-item u-sortable-item'>$Item</span>";
+            $ResultInner[] = "<span class='TorrentTitle-item u-sortable-item'><span data-value='" . $Item . "'>" . t('server.torrents.' . strtolower($Item)) . "</span></span>";
         }
-        return $Result . implode('/', $ResultInner) . '</span>';
+        return $Result . implode(' / ', $ResultInner) . '</span>';
     }
 
     public static function release_group($Torrent) {
         $FileName = self::filename($Torrent);
-        preg_match("/-([a-zA-Z0-9]{0,15})(\.\w+)?$/i", $FileName, $Matches);
-        return $Matches[1];
+        preg_match("/[-@]?([a-zA-Z0-9]{0,15})(\.\w+)?$/i", $FileName, $Matches);
+        if (count($Matches) > 1) {
+            return $Matches[1];
+        }
+        return '';
     }
 
     public static function filename($Torrent) {
         if ($Torrent['FilePath']) {
             return $Torrent['FilePath'];
         }
-        $FileList = explode("\n", $Torrent['FileList']);
+        $FileList = explode("\n", display_str($Torrent['FileList']));
         $FileInfo = Torrents::filelist_get_file($FileList[0]);
         return $FileInfo['name'];
     }
@@ -1307,7 +1420,7 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
      * @param int $FreeNeutral 0 = normal, 1 = fl, 2 = nl
      * @param int $FreeLeechType 0 = Unknown, 1 = Staff picks, 2 = Perma-FL (Toolbox, etc.)
      */
-    public static function freeleech_torrents($TorrentIDs, $FreeNeutral = 1, $FreeLeechType = 0, $Schedule = false) {
+    public static function freeleech_torrents($TorrentIDs, $FreeNeutral = 1, $FreeLeechType = 0, $Schedule = false, $LimitTime = null) {
         if (!is_array($TorrentIDs)) {
             $TorrentIDs = array($TorrentIDs);
         }
@@ -1329,10 +1442,19 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
 
         foreach ($Torrents as $Torrent) {
             list($TorrentID, $GroupID, $InfoHash) = $Torrent;
+            G::$Cache->delete_value("torrents_details_$GroupID");
+            if ($LimitTime !== null) {
+                G::$DB->query("
+                   INSERT INTO `freetorrents_timed`(`TorrentID`, `EndTime`) 
+                   VALUES ($TorrentID, '$LimitTime') ON DUPLICATE KEY UPDATE EndTime=VALUES(EndTime)");
+            }
             Tracker::update_tracker('update_torrent', array('info_hash' => rawurlencode($InfoHash), 'freetorrent' => $FreeNeutral));
             G::$Cache->delete_value("torrent_download_$TorrentID");
             Misc::write_log(($Schedule ? "Schedule" : G::$LoggedUser['Username']) . " marked torrent $TorrentID freeleech $FreeNeutral type $FreeLeechType!");
             Torrents::write_group_log($GroupID, $TorrentID, $Schedule ? 0 : G::$LoggedUser['ID'], "marked as freeleech $FreeNeutral type $FreeLeechType!", 0);
+            $TorrentInfo = Torrents::get_torrent($TorrentID);
+            $Notification = new Notification;
+            $Notification->edit_notify($TorrentInfo);
         }
 
         foreach ($GroupIDs as $GroupID) {
@@ -1348,7 +1470,7 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
      * @param int $FreeNeutral see Torrents::freeleech_torrents()
      * @param int $FreeLeechType see Torrents::freeleech_torrents()
      */
-    public static function freeleech_groups($GroupIDs, $FreeNeutral = 1, $FreeLeechType = 0) {
+    public static function freeleech_groups($GroupIDs, $FreeNeutral = 1, $FreeLeechType = 0, $LimitTime = null) {
         $QueryID = G::$DB->get_query_id();
 
         if (!is_array($GroupIDs)) {
@@ -1361,7 +1483,7 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
 			WHERE GroupID IN (' . implode(', ', $GroupIDs) . ')');
         if (G::$DB->has_results()) {
             $TorrentIDs = G::$DB->collect('ID');
-            Torrents::freeleech_torrents($TorrentIDs, $FreeNeutral, $FreeLeechType);
+            Torrents::freeleech_torrents($TorrentIDs, $FreeNeutral, $FreeLeechType, false, $LimitTime);
         }
         G::$DB->set_query_id($QueryID);
     }
@@ -1411,8 +1533,8 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
 
         return (G::$LoggedUser['FLTokens'] >= 1
             && !$Torrent['PersonalFL']
-            && (in_array($Torrent['FreeTorrent'], ['11', '12', '13']) || empty($Torrent['FreeTorrent']))
-            && G::$LoggedUser['CanLeech'] == '1');
+            && (in_array($Torrent['FreeTorrent'], [self::OneFourthOff, self::TwoFourthOff, self::ThreeFourthOff]) || empty($Torrent['FreeTorrent']))
+            && G::$LoggedUser['CanLeech'] == 1);
     }
 
     /**
@@ -1503,6 +1625,91 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         return isset($CurSnatchedTorrents[$TorrentID]);
     }
 
+    public static function torrent_state($TorrentID) {
+        if (empty(G::$LoggedUser) || empty(G::$LoggedUser['ShowSnatched'])) {
+            return 0;
+        }
+
+        $UserID = G::$LoggedUser['ID'];
+        $Buckets = 64;
+        $LastBucket = $Buckets - 1;
+        $BucketID = $TorrentID & $LastBucket;
+        static $DownloadedTorrents = array(), $UpdateTime = array();
+
+        if (empty($DownloadedTorrents)) {
+            $DownloadedTorrents = array_fill(0, $Buckets, false);
+            $UpdateTime = G::$Cache->get_value("users_downloaded_{$UserID}_time");
+            if ($UpdateTime === false) {
+                $UpdateTime = array(
+                    'last' => 0,
+                    'next' => 0
+                );
+            }
+        } elseif (isset($DownloadedTorrents[$BucketID][$TorrentID])) {
+            return $DownloadedTorrents[$BucketID][$TorrentID] > 0 ? self::Downloading : self::Seeding;
+        }
+
+        // Torrent was not found in the previously inspected snatch lists
+        $CurDownloadedTorrents = &$DownloadedTorrents[$BucketID];
+        if ($CurDownloadedTorrents === false) {
+            $CurTime = time();
+            // This bucket hasn't been checked before
+            $CurDownloadedTorrents = G::$Cache->get_value("users_downloaded_{$UserID}_$BucketID", true);
+            if ($CurDownloadedTorrents === false || $CurTime > $UpdateTime['next']) {
+                $Updated = array();
+                $QueryID = G::$DB->get_query_id();
+                if ($CurDownloadedTorrents === false || $UpdateTime['last'] == 0) {
+                    for ($i = 0; $i < $Buckets; $i++) {
+                        $DownloadedTorrents[$i] = array();
+                    }
+                    // Not found in cache. Since we don't have a suitable index, it's faster to update everything
+                    G::$DB->query("
+						SELECT fid, remaining
+						FROM xbt_files_users 
+						WHERE uid = '$UserID' and active = 1");
+                    while (list($ID, $Remaining) = G::$DB->next_record(MYSQLI_NUM, false)) {
+                        $DownloadedTorrents[$ID & $LastBucket][(int)$ID] = $Remaining;
+                    }
+                    $Updated = array_fill(0, $Buckets, true);
+                } elseif (isset($CurDownloadedTorrents[$TorrentID])) {
+                    // Old cache, but torrent is snatched, so no need to update
+                    return $CurDownloadedTorrents[$TorrentID] > 0 ? self::Downloading : self::Seeding;
+                } else {
+                    // Old cache, check if torrent has been snatched recently
+                    G::$DB->query("
+						SELECT fid, remaining
+						FROM xbt_files_users
+						WHERE uid = '$UserID'
+							AND mtime >= $UpdateTime[last]");
+                    while (list($ID, $Remainging) = G::$DB->next_record(MYSQLI_NUM, false)) {
+                        $CurBucketID = $ID & $LastBucket;
+                        if ($DownloadedTorrents[$CurBucketID] === false) {
+                            $DownloadedTorrents[$CurBucketID] = G::$Cache->get_value("users_downloaded_{$UserID}_$CurBucketID", true);
+                            if ($DownloadedTorrents[$CurBucketID] === false) {
+                                $DownloadedTorrents[$CurBucketID] = array();
+                            }
+                        }
+                        $DownloadedTorrents[$CurBucketID][(int)$ID] = $Remainging;
+                        $Updated[$CurBucketID] = true;
+                    }
+                }
+                G::$DB->set_query_id($QueryID);
+                for ($i = 0; $i < $Buckets; $i++) {
+                    if (isset($Updated[$i])) {
+                        G::$Cache->cache_value("users_downloaded_{$UserID}_$i", $DownloadedTorrents[$i], 0);
+                    }
+                }
+                $UpdateTime['last'] = $CurTime;
+                $UpdateTime['next'] = $CurTime + self::SNATCHED_UPDATE_INTERVAL;
+                G::$Cache->cache_value("users_downloaded_{$UserID}_time", $UpdateTime, 0);
+            }
+        }
+        if (!isset($CurDownloadedTorrents[$TorrentID])) {
+            return 0;
+        }
+        return $CurDownloadedTorrents[$TorrentID] > 0 ? self::Downloading : self::Seeding;
+    }
+
     /**
      * Change the schedule for when the next update to a user's cached snatch list should be performed.
      * By default, the change will only be made if the new update would happen sooner than the current
@@ -1538,42 +1745,59 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
     public static function update_movie_artist_info($GroupID, $IMDBID, $Refresh = false) {
         G::$DB->query("SELECT 
                         ta.ArtistID,
-                        wa.IMDBID,
+                        ag.IMDBID,
                         ag.RevisionID as RevisionID,
-                        wa.Image as Image,
-                        wa.Birthday as Birthday,
-                        wa.PlaceOfBirth as PlaceOfBirth,
-                        wa.Body as Body
+                        ag.Image as Image,
+                        ag.Birthday as Birthday,
+                        ag.PlaceOfBirth as PlaceOfBirth,
+                        ag.SubName as SubName,
+                        ag.Body as Body
                        FROM 
                         torrents_artists as ta
                        LEFT JOIN 
                         artists_group as ag
                        ON 
                         ag.ArtistID = ta.ArtistID
-                       LEFT JOIN
-                        wiki_artists as wa
-                       ON
-                        ag.RevisionID = wa.RevisionID
                        WHERE 
                         GroupID=$GroupID
                        AND
-                        wa.IMDBID <> ''");
+                        ag.IMDBID <> ''");
         $Artists = G::$DB->to_array(false, MYSQLI_ASSOC, false);
         $IMDBIDs = [];
         foreach ($Artists as $Artist) {
-            if (empty($Artist['Image'])) {
+            if (!empty($Artist['IMDBID'])) {
                 $IMDBIDs[] = $Artist['IMDBID'];
             }
         }
         $ArtistInfos = MOVIE::get_artists_seq($IMDBIDs, $IMDBID, $Refresh);
         foreach ($Artists as $Artist) {
             $UpdateSQL = [];
-            $ArtistInfo = $ArtistInfos[$Artist['IMDBID']];
-            if (empty($Artist['Image']) && $ArtistInfo && $ArtistInfo['Image']) {
-                $UpdateSQL[] = "Image = '" . db_string($ArtistInfo['Image']) . "'";
+            $WikiChange = false;
+            $ArtistID = $Artist['ArtistID'];
+            $SubName = $Artist['SubName'];
+            $Name = $Artist['Name'];
+            $Body = $Artist['Body'];
+            $MainBody = $Artist['MainBody'];
+            $Image = $Artist['Image'];
+            $ArtistIMDBID = $Artist['IMDBID'];
+            $ArtistInfo = $ArtistInfos[$ArtistIMDBID];
+            if (empty($ArtistInfo)) {
+                continue;
             }
-            if (empty($Artist['Body']) && $ArtistInfo && $ArtistInfo['Description']) {
+            if (empty($Image) && $ArtistInfo && !empty($ArtistInfo['Image'])) {
+                $UpdateSQL[] = "Image = '" . db_string($ArtistInfo['Image']) . "'";
+                $Image = db_string($ArtistInfo['Image']);
+                $WikiChange = true;
+            }
+            if (empty($Body) && $ArtistInfo && !empty($ArtistInfo['Description'])) {
                 $UpdateSQL[] = "Body = '" . db_string($ArtistInfo['Description']) . "'";
+                $Body = db_string($ArtistInfo['Description']);
+                $WikiChange = true;
+            }
+            if (empty($MainBody) && $ArtistInfo && !empty($ArtistInfo['MainDescription'])) {
+                $UpdateSQL[] = "MainBody = '" . db_string($ArtistInfo['MainDescription']) . "'";
+                $MainBody = db_string($ArtistInfo['MainDescription']);
+                $WikiChange = true;
             }
             if (empty($Artist['PlaceOfBirth']) && $ArtistInfo && $ArtistInfo['PlaceOfBirth']) {
                 $UpdateSQL[] = "PlaceOfBirth = '" . db_string($ArtistInfo['PlaceOfBirth']) . "'";
@@ -1581,20 +1805,25 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
             if (empty($Artist['Birthday']) && $ArtistInfo && $ArtistInfo['Birthday']) {
                 $UpdateSQL[] = "Birthday = '" . db_string($ArtistInfo['Birthday']) . "'";
             }
+            if ($WikiChange) {
+                G::$DB->query(
+                    "INSERT INTO wiki_artists
+			        (PageID, Body, MainBody, Image, UserID, Summary, Time, IMDBID, SubName, Name)
+		        VALUES
+			        ('$ArtistID', '$Body', '$MainBody', '$Image', '0', 'Auto load', '" . sqltime() . "', '$ArtistIMDBID', '$SubName', '$Name')"
+                );
+                $RevisionID = G::$DB->inserted_id();
+                $UpdateSQL[] = "RevisionID = $RevisionID";
+            }
             if (empty($UpdateSQL)) {
                 continue;
             }
-            $SQL = '
-                Update wiki_artists set ' . implode(',', $UpdateSQL) .
-                ' WHERE RevisionID = ' . $Artist['RevisionID'] . ' ';
-            G::$DB->query($SQL);
+            G::$DB->query("UPDATE artists_group SET " . implode(',', $UpdateSQL) . " WHERE ArtistID = $ArtistID");
             G::$Cache->delete_value('artist_' . $Artist['ArtistID']);
-            G::$Cache->delete_value('artist_groups_' . $Artist['ArtistID']);
-            G::$Cache->delete_value('groups_artists_' . $GroupID);
-            G::$Cache->delete_value("torrent_group_$GroupID");
-            G::$Cache->delete_value("torrents_details_$GroupID");
         }
-        echo "Update group $GroupID artist info success.\n";
+        G::$Cache->delete_value('groups_artists_' . $GroupID);
+        G::$Cache->delete_value("torrent_group_$GroupID");
+        G::$Cache->delete_value("torrents_details_$GroupID");
     }
 
     public static function update_movie_info($GroupID, $IMDBID, $DoubanID = null, $Force = true) {
@@ -1603,7 +1832,6 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         }
         $OMDBData = MOVIE::get_omdb_data($IMDBID, $Force);
         $UpdateSQL = [];
-        $UpdateSQL[] = "IMDBID = '" . $IMDBID . "'";
         if ($OMDBData->imdbVotes && $OMDBData->imdbVotes != 'N/A') {
             $UpdateSQL[] = "IMDBVote = " . str_replace(',', '', $OMDBData->imdbVotes);
         }
@@ -1632,10 +1860,9 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
             $UpdateSQL[] = "RTRating = '" . $RTRating . "'";
         }
         $DoubanData = null;
-        if ($DoubanID) {
+        if (!empty($DoubanID)) {
+            $UpdateSQL[] = "DoubanID = " . $DoubanID;
             $DoubanData = MOVIE::get_douban_data_by_doubanid($DoubanID, $Force);
-        } else {
-            $DoubanData = MOVIE::get_douban_data($IMDBID, $Force);
         }
         if ($DoubanData && $DoubanData->rating) {
             $UpdateSQL[] = "DoubanRating = " . $DoubanData->rating;
@@ -1643,15 +1870,14 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         if ($DoubanData && $DoubanData->votes) {
             $UpdateSQL[] = "DoubanVote = " . $DoubanData->votes;
         }
-        if ($DoubanData && $DoubanData->id) {
-            $UpdateSQL[] = "DoubanID = " . $DoubanData->id;
-        }
+
         $SQL = '
         Update torrents_group set ' . implode(',', $UpdateSQL) .
             ' WHERE ID = ' . $GroupID . ' ';
         G::$DB->query($SQL);
         G::$Cache->delete_value("torrent_group_$GroupID");
         G::$Cache->delete_value("torrents_details_$GroupID");
+        return $DoubanID;
     }
 
     //Used to get reports info on a unison cache in both browsing pages and torrent pages.
@@ -1671,7 +1897,7 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
 				FROM reportsv2
 				WHERE TorrentID = $TorrentID
 					AND Status != 'Resolved'");
-            $Reports = G::$DB->to_array(false, MYSQLI_ASSOC, false);
+            $Reports = G::$DB->to_array(false, MYSQLI_ASSOC);
             G::$DB->set_query_id($QueryID);
             G::$Cache->cache_value("reports_torrent_$TorrentID", $Reports, 0);
         }
@@ -1744,7 +1970,7 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
     }
 
     public static function get_processing_list($a) {
-        if ($a == 'Untouched') {
+        if ($a == 'untouched') {
             return ['BD25', 'BD66', 'BD50', 'BD100', 'DVD9', 'DVD5'];
         }
         return [$a];
@@ -1819,7 +2045,7 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         $lastEdition = self::get_edition($LastResolution, $LastRemasterTitle, $LastRemasterCustomTitle, $LastNotMain);
         $nextEdition = self::get_edition($Resolution, $RemasterTitle, $RemasterCustomTitle, $NotMain);
         if ($lastEdition != $nextEdition) {
-            return Lang::get("torrents.$nextEdition", ['DefaultValue' => $nextEdition]);
+            return t("server.torrents.$nextEdition", ['DefaultValue' => $nextEdition]);
         }
         return false;
     }
@@ -1888,7 +2114,7 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         if ($SubName) {
             $DisplayName .= " [<a href=\"torrents.php?searchstr=" . $SubName . "\">$SubName</a>] ";
         }
-        $DisplayName .= "<a href=\"torrents.php?id=$GroupID&amp;torrentid=$TorrentID#torrent$TorrentID\" data-tooltip=\"" . Lang::get('global.view_torrent') . "\" dir=\"ltr\">$GroupName</a>";
+        $DisplayName .= "<a href=\"torrents.php?id=$GroupID&amp;torrentid=$TorrentID#torrent$TorrentID\" data-tooltip=\"" . t('server.common.view_torrent') . "\" dir=\"ltr\">$GroupName</a>";
         if ($GroupYear) {
             $DisplayName .= " ($GroupYear)";
         }
@@ -1896,22 +2122,22 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
     }
 
     public static function is_torrent_dead($Torrent) {
-        return $Torrent['Seeders'] == 0 && !empty($Torrent['last_action'])  && $Torrent['last_action'] != '0000-00-00 00:00:00' && $Torrent['last_action'] < time_minus(3600 * 24 * 28);
+        return $Torrent['Seeders'] == 0 && !empty($Torrent['last_action'])  && $Torrent['last_action'] != '0000-00-00 00:00:00' && $Torrent['last_action'] < time_minus(3600 * 24 * TORRENT_DEAD_PERIOD);
     }
     // New Torrent Name: 安全领域 / Dirty Rotten Scoundrels Year: 1988 Uploader: joey Tags: comedy,documentary Codec: x264 Source: Blu-ray Container: MKV Resolution: 720p Size: 1.1 GB Freeleech: Freeleech! Link: https://CONFIG['SITE_NAME']/torrents.php?id=375
     public static function build_irc_msg($UploaderName, $Torrent) {
         $Freeleech = '';
         switch ($Torrent['FreeTorrent']) {
-            case 1:
+            case self::FREE:
                 $Freeleech = 'Freeleech!';
                 break;
-            case 11:
+            case self::OneFourthOff:
                 $Freeleech = '25% off!';
                 break;
-            case 12:
+            case self::ThreeFourthOff:
                 $Freeleech = '50% off!';
                 break;
-            case 13:
+            case self::ThreeFourthOff:
                 $Freeleech = '75% off!';
                 break;
         }
@@ -1968,7 +2194,14 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
         }
     }
     public static function freeleech_option() {
-        return array(0 => "Normal", 1 => "Free", 2 => "Neutral", 11 => "-25%", 12 => "-50%", 13 => "-75%");
+        return array(
+            self::Normal => "Normal",
+            self::FREE => "Free",
+            self::Neutral => "Neutral",
+            self::OneFourthOff => "-25%",
+            self::TwoFourthOff => "-50%",
+            self::ThreeFourthOff => "-75%"
+        );
     }
 
     public static function global_freeleech() {
@@ -1976,12 +2209,69 @@ WHERE ud.TorrentID=? AND ui.NotifyOnDeleteDownloaded='1' AND ud.UserID NOT IN ({
     }
 
     public static function torrent_freeleech($Torrent) {
-        return $Torrent['FreeTorrent'] == 1 || self::global_freeleech();
+        return $Torrent['FreeTorrent'] == self::FREE || self::global_freeleech();
     }
     public static function torrent_freetype($Torrent) {
         if (self::global_freeleech()) {
             return 1;
         }
         return $Torrent['FreeTorrent'];
+    }
+    public static function sanitizeName($Name) {
+        return preg_replace(
+            '/_+/',
+            '_',         // remove doubled-up underscore
+            trim(                                 // trim leading, trailing underscore
+                preg_replace(
+                    '/[^a-z0-9_]+/',
+                    '', // remove non alphanum, underscore
+                    str_replace(
+                        [' ', '-'],
+                        '_',  // dash and internal space to underscore
+                        strtolower(               // lowercase
+                            trim($Name)            // whitespace
+                        )
+                    )
+                ),
+                '.' // trim-a-dot
+            )
+        );
+    }
+    public static function build_file_tree($FilePath, $FileList) {
+        $FileList = array_map(function ($value) use ($FilePath) {
+            if (!empty($FilePath)) {
+                return [array_merge([$FilePath], explode('/', $value[0])), $value[1]];
+            }
+            return [explode('/', $value[0]), $value[1]];
+        }, $FileList);
+        $Root = [];
+        foreach ($FileList as $File) {
+            self::_group_File($Root, $File[0], $File[1]);
+        }
+        return $Root;
+    }
+    private static function _group_file(&$Root, $Fragment, $Size) {
+        if (count($Fragment) == 1) {
+            $Root[$Fragment[0]] = ['size' => $Size, 'children' => []];
+        } else {
+            self::_group_file($Root[$Fragment[0]]['children'], array_slice($Fragment, 1), $Size);
+            $Root[$Fragment[0]]['size'] += $Size;
+        }
+        return;
+    }
+
+    public static function render_media_info($MediaInfo) {
+        $Index = 0;
+        $MediaInfoObj = json_decode($MediaInfo);
+        if (is_array($MediaInfoObj)) {
+            foreach ($MediaInfoObj as $MediaInfo) {
+                $MediaInfo = ltrim(trim($MediaInfo), '[mediainfo]');
+                $MediaInfo = ltrim(trim($MediaInfo), '[bdinfo]');
+                $MediaInfo = rtrim(trim($MediaInfo), '[/mediainfo]');
+                $MediaInfo = rtrim(trim($MediaInfo), '[/bdinfo]');
+                echo ($Index > 0 ? "<br>" : "") . Text::full_format('[mediainfo]' . $MediaInfo . '[/mediainfo]');
+                $Index++;
+            }
+        }
     }
 }

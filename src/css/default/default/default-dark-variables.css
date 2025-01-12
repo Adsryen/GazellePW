@@ -61,6 +61,8 @@
     /* Button */
     --Button-default-border: 1px solid #464646;
     --Button-default-boxShadow: 0 0 5px 2px rgba(37, 37, 37, 0.07);
+    --Button-primary-background: var(--HeaderAnnounceItem-link-background);
+    --Button-primary-color: #000;
 
     /* Header */
     --Header-background: transparent;
@@ -86,6 +88,7 @@
     --HeaderDonate-progressBar-onHover-background: #fff;
     --HeaderDonate-progressBarBorder-border: 2px solid #aaa;
     --HeaderDonate-progressBarBorder-onHover-border: 2px solid #fff;
+    --HeaderLogo-icon: url(../assets/loginlogo-dark.png) center / contain no-repeat;
 
     /* Footer */
     --Footer-background: transparent;
@@ -100,8 +103,8 @@
 
     /* TorrentTable */
     --TableTorrent-movieInfo-background: inherit;
-    --TableTorrent-category-background: rgba(0, 0, 0, 0.1);
-    --TableTorrent-title-background: rgba(0, 0, 0, 0.2);
+    --TableTorrent-category-background: rgba(0, 0, 0, 0.25);
+    --TableTorrent-title-background: rgba(0, 0, 0, 0.7);
     --TableTorrent-movieInfoTitle-color: #b0b0b0;
     --TableTorrent-movieInfoTitle-onHover-color: #ccc;
     --TableTorrent-movieInfoYear-color: #777;
@@ -126,12 +129,19 @@
 
     /* Progress */
     --Progress-bar-background: #111;
-    --Progress-value-background: #323232;
+    --Progress-value-background: #3d81b1;
 
     /* Chart */
     --Chart-gridLine: #434c56;
     --Chart-axisText: #768390;
     --Chart-axisLine: #434c56;
+
+    /* ProgressBar */
+    --ProgressBar-percent-color: #aaa;
+    --ProgressBar-background: #aaa;
+    --ProgressBar-onHover-background: #fff;
+    --ProgressBarBorder-border: 2px solid #aaa;
+    --ProgressBarBorder-onHover-border: 2px solid #fff;
   }
 }
 

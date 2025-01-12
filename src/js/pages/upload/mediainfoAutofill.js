@@ -23,15 +23,19 @@ export default function mediainfoAutofill(text) {
 
   for (const [key, value] of Object.entries(fields)) {
     const selector = `#${key}`
-    if (isString(value)) {
-      // 当选择自动填充的时候才修改
-      if ($(selector).val() === '' && !$(selector).prop('disabled')) {
-        $(selector).val(value)
+    try {
+      if (isString(value)) {
+        // 当选择自动填充的时候才修改
+        if ($(selector).val() === '' && !$(selector).prop('disabled')) {
+          $(selector).val(value)
+        }
+      } else if (isBoolean(value)) {
+        $(selector).prop('checked', value)
+      } else if (value === SHOW) {
+        $(selector).show()
       }
-    } else if (isBoolean(value)) {
-      $(selector).prop('checked', value)
-    } else if (value === SHOW) {
-      $(selector).show()
+    } catch (error) {
+      console.log('invalid selector: ' + error.message)
     }
   }
 
@@ -56,8 +60,14 @@ function toFields(info) {
     container: info.container,
     ...toResolution(info),
     ...toLangs(info),
+    ...toOption(info.videoOption),
+    ...toOption(info.audioOption),
   }
   return fields
+}
+
+function toOption(option) {
+  return Object.fromEntries(option.map((v) => [v, true]))
 }
 
 function toResolution(info) {

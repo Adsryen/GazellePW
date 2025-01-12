@@ -61,7 +61,6 @@ switch ($Document) {
     case 'log':
     case 'login':
     case 'logout':
-    case 'questions':
     case 'random':
     case 'referral':
     case 'register':
@@ -78,7 +77,6 @@ switch ($Document) {
     case 'top10':
     case 'activity':
     case 'badges':
-    case 'ssp':
     case 'subtitles':
         $Valid = true;
         break;

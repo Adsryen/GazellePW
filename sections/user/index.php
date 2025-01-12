@@ -26,7 +26,17 @@ switch ($_REQUEST['action']) {
         include('thumb.php');
         break;
     case 'notify':
+        include('notify_list.php');
+        break;
+    case 'notify_edit':
         include('notify_edit.php');
+        break;
+
+    case 'staff_tool':
+        include('staff_tool.php');
+        break;
+    case 'linked_account':
+        include('linked_account.php');
         break;
     case 'notify_handle':
         include('notify_handle.php');
@@ -175,6 +185,9 @@ switch ($_REQUEST['action']) {
     case 'take_edit':
         include('take_edit.php');
         break;
+    case 'change_torrent_view':
+        include('change_torrent_view.php');
+        break;
     case 'invitetree':
         include(CONFIG['SERVER_ROOT'] . '/sections/user/invitetree.php');
         break;
@@ -222,6 +235,12 @@ switch ($_REQUEST['action']) {
     case 'take_donate':
         break;
     case 'take_update_rank':
+        break;
+    case 'dupes':
+        include('manage_linked.php');
+        break;
+    case 'token':
+        include("token.php");
         break;
     default:
         if (isset($_REQUEST['id'])) {

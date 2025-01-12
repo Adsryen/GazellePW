@@ -12,6 +12,8 @@ authorize();
 require(CONFIG['SERVER_ROOT'] . '/classes/validate.class.php');
 
 use Gazelle\Torrent\EditionInfo;
+use Gazelle\Torrent\Notification;
+use Gazelle\Torrent\TorrentSlot;
 
 $Validate = new VALIDATE;
 
@@ -27,8 +29,10 @@ $Type = $Categories[$TypeID - 1];
 $TorrentID = (int)$_POST['torrentid'];
 
 $Properties['Scene'] = (isset($_POST['scene'])) ? 1 : 0;
+$Properties['TorrentID'] = $TorrentID;
 $Properties['Jinzhuan'] = (isset($_POST['jinzhuan'])) ? 1 : 0;
 $Properties['Diy'] = (isset($_POST['diy'])) ? 1 : 0;
+$Properties['Makers'] = $_POST['makers'];
 $Properties['Buy'] = (isset($_POST['buy'])) ? 1 : 0;
 $Properties['Allow'] = (isset($_POST['allow'])) ? 1 : 0;
 $Properties['BadTags'] = (isset($_POST['bad_tags'])) ? 1 : 0;
@@ -63,7 +67,6 @@ if ($Properties['Resolution'] == 'Other' && $_POST['resolution_width'] && $_POST
     $Properties['Resolution'] = $_POST['resolution_width'] . '×' . $_POST['resolution_height'];
 }
 $Properties['Subtitles'] = implode(',', $_POST['subtitles']);
-$Properties['Makers'] = $_POST['makers'];
 $Properties['Processing'] = $_POST['processing'];
 if ($_POST['processing_other']) {
     $Properties['Processing'] = $_POST['processing_other'];
@@ -73,6 +76,7 @@ $Properties['RemasterTitle'] = $_POST['remaster_title'];
 if (!EditionInfo::validate($Properties['RemasterTitle'])) {
     die("invalid remaster_title");
 }
+$Properties['RemasterTitle'] = EditionInfo::mergeAdvanceFeature($Properties['RemasterTitle'], $_POST);
 
 $Properties['RemasterCustomTitle'] = $_POST['remaster_custom_title'];
 $Properties['TorrentDescription'] = $_POST['release_desc'];
@@ -178,13 +182,17 @@ $DBTorVals = $DBTorVals[0];
 $LogDetails = '';
 foreach ($DBTorVals as $Key => $Value) {
     $Value = "'$Value'";
-    // shit special logic, 不熟悉PHP
+    // shit special logic
     if ($Key == 'MediaInfo') {
         if ("'" . $Properties[$Key] . "'" == $Value) {
             continue;
         }
     }
     if ($Value != $T[$Key]) {
+        if ($Key == 'Resolution') {
+            $Slot = TorrentSlot::CalSlot($Properties);
+            var_dump($Slot);
+        }
         if (!isset($T[$Key])) {
             continue;
         }
@@ -210,9 +218,7 @@ $SQL .= "
 		Container = $T[Container],
 		Resolution = $T[Resolution],
 		Subtitles = $T[Subtitles],
-		Makers = $T[Makers],
 		Scene = $T[Scene],
-		Jinzhuan = $T[Jinzhuan],
 		RemasterTitle = $T[RemasterTitle],
 		RemasterCustomTitle = $T[RemasterCustomTitle],
 		RemasterYear = $T[RemasterYear],
@@ -222,12 +228,18 @@ $SQL .= "
         SpecialSub = $T[SpecialSub],
         MediaInfo = $T[MediaInfo],
         SubtitleType = $T[SubtitleType],
-        Note = $T[Note],
 		Allow = $T[Allow],";
 if (check_perms("users_mod")) {
     $SQL .= "
 		Buy = $T[Buy],
+		Jinzhuan = $T[Jinzhuan],
+        Note = $T[Note],
+        Makers = $T[Makers],
 		Diy = $T[Diy],";
+}
+
+if ($Slot !== null) {
+    $SQL .= "Slot = $Slot,";
 }
 
 if (check_perms('torrents_freeleech')) {
@@ -309,7 +321,7 @@ if (check_perms('torrents_trumpable')) {
     $DB->query("
 	DELETE FROM torrents_custom_trumpable
 	WHERE TorrentID = '$TorrentID'");
-    if ($Properties['CustomTrumpable']) {
+    if (!empty($Properties['CustomTrumpable']) && check_perms('users_mod')) {
         $DB->query("
 			INSERT INTO torrents_custom_trumpable
 			VALUES ($TorrentID, $LoggedUser[ID], '" . sqltime() . "', '" . db_string(trim($Properties['CustomTrumpable'])) . "')");
@@ -321,30 +333,30 @@ $SQL .= "
 	WHERE ID = $TorrentID";
 $DB->query($SQL);
 
+$DB->query("
+	SELECT GroupID,  Time
+	FROM torrents
+	WHERE ID = '$TorrentID'");
+list($GroupID, $Body, $TagList, $Time) = $DB->next_record();
+$Properties['GroupID'] = $GroupID;
+$Group = Torrents::get_group($GroupID);
+
+
 if (check_perms('torrents_freeleech') && $Properties['FreeLeech'] != $CurFreeLeech) {
     Torrents::freeleech_torrents($TorrentID, $Properties['FreeLeech'], $Properties['FreeLeechType']);
 }
 
-$DB->query("
-	SELECT GroupID, Time
-	FROM torrents
-	WHERE ID = '$TorrentID'");
-list($GroupID, $Time) = $DB->next_record();
 
-$DB->query("
-	SELECT Name
-	FROM torrents_group
-	WHERE ID = $GroupID");
-list($Name) = $DB->next_record(MYSQLI_NUM, false);
-
-Misc::write_log("Torrent $TorrentID ($Name) in group $GroupID was edited by " . $LoggedUser['Username'] . " ($LogDetails)"); // TODO: this is probably broken
+Misc::write_log("Torrent $TorrentID in group $GroupID was edited by " . $LoggedUser['Username'] . " ($LogDetails)"); // TODO: this is probably broken
 if ($LogDetails) {
     Torrents::write_group_log($GroupID, $TorrentID, $LoggedUser['ID'], $LogDetails, 0);
 }
+
 $Cache->delete_value("torrents_details_$GroupID");
 $Cache->delete_value("torrent_download_$TorrentID");
 
 Torrents::update_hash($GroupID);
+
 // All done!
 
 header("Location: torrents.php?id=$GroupID");

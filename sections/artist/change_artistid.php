@@ -4,50 +4,34 @@ authorize();
 if (!check_perms('torrents_edit')) {
   error(403);
 }
-if (!empty($_POST['newartistid']) && !empty($_POST['newartistname'])) {
+if (empty($_POST['newartistid'])) {
   error('Please enter a valid artist ID number or a valid artist name.');
 }
 $ArtistID = (int)$_POST['artistid'];
 $NewArtistID = (int)$_POST['newartistid'];
-$NewArtistName = $_POST['newartistname'];
 
 
 if (!is_number($ArtistID) || !$ArtistID) {
   error('Please select a valid artist to change.');
 }
-if (empty($NewArtistName) && (!$NewArtistID || !is_number($NewArtistID))) {
-  error('Please enter a valid artist ID number or a valid artist name.');
-}
 
 $DB->query("
-	SELECT Name
+	SELECT Name, SubName
 	FROM artists_group
 	WHERE ArtistID = $ArtistID
 	LIMIT 1");
-if (!(list($ArtistName) = $DB->next_record(MYSQLI_NUM, false))) {
+if (!(list($ArtistName, $ArtistSubName) = $DB->next_record(MYSQLI_NUM, false))) {
   error('An error has occurred.');
 }
 
-if ($NewArtistID > 0) {
-  // Make sure that's a real artist ID number, and grab the name
-  $DB->query("
-		SELECT Name
-		FROM artists_group
-		WHERE ArtistID = $NewArtistID
-		LIMIT 1");
-  if (!(list($NewArtistName) = $DB->next_record())) {
-    error('Please enter a valid artist ID number.');
-  }
-} else {
-  // Didn't give an ID, so try to grab based on the name
-  $DB->query("
-		SELECT ArtistID
-		FROM artists_alias
-		WHERE Name = '" . db_string($NewArtistName) . "'
-		LIMIT 1");
-  if (!(list($NewArtistID) = $DB->next_record())) {
-    error('No artist by that name was found.');
-  }
+// Make sure that's a real artist ID number, and grab the name
+$DB->query("
+SELECT Name, SubName
+FROM artists_group
+WHERE ArtistID = $NewArtistID
+LIMIT 1");
+if (!(list($NewArtistName, $NewArtistSubName) = $DB->next_record())) {
+  error('Please enter a valid artist ID number.');
 }
 
 if ($ArtistID == $NewArtistID) {
@@ -168,26 +152,39 @@ if (isset($_POST['confirm'])) {
 		DELETE FROM artists_group
 		WHERE ArtistID = $ArtistID");
 
-  Misc::write_log("The artist $ArtistID ($ArtistName) was made into a non-redirecting alias of artist $NewArtistID ($NewArtistName) by user " . $LoggedUser['ID'] . " (" . $LoggedUser['Username'] . ')');
+  Misc::write_log("The artist $ArtistID ($ArtistName) was made into a alias of artist $NewArtistID ($NewArtistName) by user " . $LoggedUser['ID'] . " (" . $LoggedUser['Username'] . ')');
 
   header("Location: artist.php?action=edit&artistid=$NewArtistID");
 } else {
-  View::show_header(Lang::get('artist.merging_artists'), 'PageChangeArtistId');
+  View::show_header(t('server.artist.merging_artists'), 'PageChangeArtistId');
 ?>
-  <div class="BodyHeader">
-    <h2 class="BodyHeader-nav"><?= Lang::get('artist.confirm_merge') ?></h2>
-  </div>
-  <form class="merge_form" name="artist" action="artist.php" method="post">
-    <input type="hidden" name="action" value="change_artistid" />
-    <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
-    <input type="hidden" name="artistid" value="<?= $ArtistID ?>" />
-    <input type="hidden" name="newartistid" value="<?= $NewArtistID ?>" />
-    <input type="hidden" name="confirm" value="1" />
-    <div style="text-align: center;">
-      <p id="confirm_merge_note"><?= Lang::get('artist.confirm_merge_1') ?><a href="artist.php?id=<?= $ArtistID ?>"><?= display_str($ArtistName) ?> (<?= $ArtistID ?>)</a><?= Lang::get('artist.confirm_merge_2') ?><a href="artist.php?id=<?= $NewArtistID ?>"><?= display_str($NewArtistName) ?> (<?= $NewArtistID ?>)</a><?= Lang::get('artist.confirm_merge_3') ?></p>
-      <input class="Button" type="submit" value="Confirm" />
+  <div class="LayoutBody">
+    <div class="BodyHeader">
+      <h2 class="BodyHeader-nav"><?= page_title_conn([t('server.artist.confirm_merge'), Artists::display_artist(['Name' => $ArtistName, 'SubName' => $ArtistSubName])]); ?></h2>
     </div>
-  </form>
+    <div class="BodyContent">
+      <form class="merge_form" name="artist" action="artist.php" method="post">
+        <input type="hidden" name="action" value="change_artistid" />
+        <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
+        <input type="hidden" name="artistid" value="<?= $ArtistID ?>" />
+        <input type="hidden" name="newartistid" value="<?= $NewArtistID ?>" />
+        <input type="hidden" name="confirm" value="1" />
+        <div>
+          <p id="confirm_merge_note">
+            <?
+            $ArtistNameDisplay = display_str(Artists::display_artist(['Name' => $ArtistName, 'SubName' => $ArtistSubName], false));
+            $NewArtistNameDisplay = display_str(Artists::display_artist(['Name' => $NewArtistName, 'SubName' => $NewArtistSubName], false));
+            ?>
+            <?= t('server.artist.confirm_merge_body', ['Values' => [
+              "<a href='artist.php?id=${ArtistID}'>${ArtistNameDisplay} (${ArtistID})</a>",
+              "<a href='artist.php?id=${NewArtistID}'>${NewArtistNameDisplay} (${NewArtistID})</a>",
+            ]]) ?>
+          </p>
+          <input class="Button" type="submit" value="Confirm" />
+        </div>
+      </form>
+    </div>
+  </div>
 <?
   View::show_footer();
 }

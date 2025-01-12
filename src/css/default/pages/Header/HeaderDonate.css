@@ -25,10 +25,10 @@ HeaderDonate
   display: flex;
   align-items: center;
   height: 100%;
+  width: 130px;
 }
 .HeaderDonate-percent {
   line-height: 1;
-  color: var(--global-color-warning);
   font-weight: bold;
 }
 
@@ -57,4 +57,12 @@ HeaderDonate
 
 .HeaderDonate-link:hover .HeaderDonate-progressBar {
   background: var(--HeaderDonate-progressBar-onHover-background);
+}
+
+.DonationPage-progress {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: bold;
+  font-style: italic;
+  color: var(--global-color-success);
 }

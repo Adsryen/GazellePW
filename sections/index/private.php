@@ -1,9 +1,10 @@
 <?php
 include(CONFIG['SERVER_ROOT'] . '/classes/torrenttable.class.php');
 require(CONFIG['SERVER_ROOT'] . '/classes/top10_movies.class.php');
+require(CONFIG['SERVER_ROOT'] . '/classes/forums.class.php');
 Text::$TOC = true;
 
-$NewsCount = 5;
+$NewsCount = 3;
 if (!$News = $Cache->get_value('news')) {
     $ForumID = CONFIG['NEWS_FORUM_ID'];
     $DB->query("SELECT `ID`, `Title`, `CreatedTime` , `IsSticky` FROM `forums_topics` WHERE `ForumID` = '$ForumID' AND  `IsNotice` = '1'  ORDER BY `IsSticky` DESC, `CreatedTime` DESC LIMIT $NewsCount");
@@ -38,8 +39,9 @@ if ($_SERVER['REQUEST_URI'] === '/index.php') {
     }
 }
 
-View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
+View::show_header(t('server.index.index'), 'comments', 'PageHome');
 ?>
+
 <div class="LayoutMainSidebar">
     <div class="Sidebar LayoutMainSidebar-sidebar">
         <!-- Poll -->
@@ -113,16 +115,16 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
                         $BlankVote = true;
                     }
                 }
-                $PollStatus = $Closed ? ' [' . Lang::get('forums.closed') . ']' : ''
+                $PollStatus = $Closed ? ' [' . t('server.forums.closed') . ']' : ''
         ?>
                 <div class="SidebarItemPoll SidebarItem Box is-limitHeight">
                     <div class="SidebarItem-header Box-header">
-                        <?= Lang::get('index.poll') ?><?= $PollStatus ?>
+                        <?= t('server.index.poll') ?><?= $PollStatus ?>
                     </div>
                     <div class="SidebarItem-body Box-body">
                         <div class="Poll">
                             <a class="Poll-question" href="forums.php?action=viewthread&amp;threadid=<?= $TopicID ?>">
-                                <?= display_str($Question) . " (" . Lang::get('forums.limited1') . " $MaxCount " . Lang::get('forums.limited2') . ")" ?>
+                                <?= display_str($Question) . " (" . t('server.forums.limited', ['Values' => [$MaxCount]])  .  ")" ?>
                             </a>
                             <? if ($UserResponse !== null || $Closed) { ?>
                                 <ul class="Poll-answers">
@@ -142,7 +144,7 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
                                     <? } ?>
                                 </ul>
                                 <div class="Poll-count">
-                                    <?= Lang::get('forums.votes') ?>: <?= number_format($TotalVotes) ?>, <?= Lang::get('forums.voters') ?>: <?= $PeopleCount ?>
+                                    <?= t('server.forums.votes') ?>: <?= number_format($TotalVotes) ?>, <?= t('server.forums.voters') ?>: <?= $PeopleCount ?>
                                 </div>
                             <?  } else { ?>
                                 <div id="PollContainer">
@@ -161,10 +163,10 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
                                             <? } ?>
                                             <li class="Poll-answerItem Checkbox">
                                                 <input class="Input" type="checkbox" name="vote[]" id="answer_0" value="0" onclick="PollCount(0)" />
-                                                <label class="Checkbox-label" for="answer_0"><?= Lang::get('index.blank') ?></label>
+                                                <label class="Checkbox-label" for="answer_0"><?= t('server.index.blank') ?></label>
                                             </li>
                                         </ul>
-                                        <input class="Poll-voteFormSubmit Button" type="button" onclick="ajax.post('index.php', 'poll', function(response) { $('#PollContainer').raw().innerHTML = response } );" value='<?= Lang::get('index.vote') ?>' />
+                                        <input class="Poll-voteFormSubmit Button" type="button" onclick="ajax.post('index.php', 'poll', function(response) { $('#PollContainer').raw().innerHTML = response } );" value='<?= t('server.index.vote') ?>' />
                                     </form>
                                 </div>
                             <?  } ?>
@@ -174,8 +176,11 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
             <? } ?>
         <?  } ?>
 
+        <!-- Upload rank -->
+        <? include('upload_rank.php'); ?>
+
         <!-- Featured Movie -->
-        <? include('month_movie.php'); ?>
+        <? include('feature_movie.php'); ?>
 
         <!-- Forum Latest Topic -->
         <?
@@ -184,7 +189,7 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
         ?>
             <div class="SidebarItem Box">
                 <div class="SidebarItem-header Box-header">
-                    <a href="forum.php"><?= Lang::get('index.latest_thread') ?></a>
+                    <a href="forum.php"><?= t('server.index.latest_thread') ?></a>
                 </div>
                 <ul class="SidebarItem-body Box-body SidebarList is-ordered">
                     <?
@@ -203,99 +208,54 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
             </div>
         <?  } ?>
 
-        <!-- Staff Blog -->
-        <? if (check_perms('users_mod')) { ?>
-            <div class="SidebarItemStaffBlog SidebarItem Box">
-                <div class="SidebarItem-header Box-header">
-                    <a href="staffblog.php"><?= Lang::get('index.staff_note') ?></a>
-                </div>
-                <?
-                if (($Blog = $Cache->get_value('staff_blog')) === false) {
-                    $DB->query("
-		SELECT
-			b.ID,
-			um.Username,
-			b.Title,
-			b.Body,
-			b.Time
-		FROM staff_blog AS b
-			LEFT JOIN users_main AS um ON b.UserID = um.ID
-		ORDER BY Time DESC");
-                    $Blog = $DB->to_array(false, MYSQLI_NUM);
-                    $Cache->cache_value('staff_blog', $Blog, 1209600);
-                }
-                if (($SBlogReadTime = $Cache->get_value('staff_blog_read_' . $LoggedUser['ID'])) === false) {
-                    $DB->query("
-		SELECT Time
-		FROM staff_blog_visits
-		WHERE UserID = " . $LoggedUser['ID']);
-                    if (list($SBlogReadTime) = $DB->next_record()) {
-                        $SBlogReadTime = strtotime($SBlogReadTime);
-                    } else {
-                        $SBlogReadTime = 0;
-                    }
-                    $Cache->cache_value('staff_blog_read_' . $LoggedUser['ID'], $SBlogReadTime, 1209600);
-                }
-                ?>
-                <ul class="SidebarItem-body Box-body SidebarList is-ordered">
-                    <?
-                    $End = min(count($Blog), 5);
-                    for ($i = 0; $i < $End; $i++) {
-                        list($BlogID, $Author, $Title, $Body, $BlogTime) = $Blog[$i];
-                        $BlogTime = strtotime($BlogTime);
-                    ?>
-                        <li class="SidebarList-item">
-                            <?= $SBlogReadTime < $BlogTime ? '<strong>' : '' ?>
-                            <a href="staffblog.php#blog<?= $BlogID ?>"><?= $Title ?></a>
-                            <?= $SBlogReadTime < $BlogTime ? '</strong>' : '' ?>
-                        </li>
-                    <?
-                    }
-                    ?>
-                </ul>
-            </div>
-        <?  } ?>
-        <div class="SidbarItemBlog SidebarItem Box">
-            <div class="SidebarItem-header Box-header">
-                <a href="blog.php"><?= Lang::get('index.blog_note') ?></a>
-            </div>
-            <?
-            if (($Blog = $Cache->get_value('blog')) === false) {
-                $DB->query("
-		SELECT
-			b.ID,
-			um.Username,
-			b.UserID,
-			b.Title,
-			b.Body,
-			b.Time,
-			b.ThreadID
-		FROM blog AS b
-			LEFT JOIN users_main AS um ON b.UserID = um.ID
-		ORDER BY Time DESC
-		LIMIT 20");
-                $Blog = $DB->to_array();
-                $Cache->cache_value('blog', $Blog, 1209600);
+
+        <? if (is_array(CONFIG['INDEX_FORUM_IDS'])) {
+
+            foreach (CONFIG['INDEX_FORUM_IDS'] as $ForumId) {
+
+                if (Forums::check_forumperm($ForumId)) {
+                    $ForumsInfo = Forums::get_forum_info($ForumId);
+        ?>
+
+                    <div class="SidebarItemStaffBlog SidebarItem Box">
+                        <div class="SidebarItem-header Box-header">
+                            <a href="forums.php?action=viewforum&forumid=<?= $ForumId ?>"><?= $ForumsInfo['Name'] ?></a>
+                        </div>
+
+                        <?
+                        $Forum = $Cache->get_value("forums_index_$ForumId");
+                        if (!isset($Forum) || !is_array($Forum)) {
+                            $DB->query("
+                      SELECT
+                        ID,
+                        Title,
+                        CreatedTime
+                      FROM forums_topics
+                      WHERE ForumID = '$ForumId'
+                      ORDER BY CreatedTime DESC
+                      LIMIT 5"); // Can be cached until someone makes a new post
+                            $Forum = $DB->to_array();
+                            $Cache->cache_value("forums_index_$ForumId", $Forum);
+                        }
+                        ?>
+                        <ul class="SidebarItem-body Box-body SidebarList is-ordered">
+                            <?
+                            $End = min(count($Forum), 5);
+                            for ($i = 0; $i < $End; $i++) {
+                                list($TopicID, $Title) = $Forum[$i];
+                            ?>
+                                <li class="SidebarList-item">
+                                    <a href="forums.php?action=viewthread&threadid=<?= $TopicID ?>"><?= $Title ?></a>
+                                </li>
+                            <?
+                            }
+                            ?>
+                        </ul>
+                    </div>
+
+        <?php }
             }
-            ?>
-            <ul class="SidebarItem-body Box-body SidebarList is-ordered">
-                <?
-                if (count($Blog) < 5) {
-                    $Limit = count($Blog);
-                } else {
-                    $Limit = 5;
-                }
-                for ($i = 0; $i < $Limit; $i++) {
-                    list($BlogID, $Author, $AuthorID, $Title, $Body, $BlogTime, $ThreadID) = $Blog[$i];
-                ?>
-                    <li class="SidebarList-item">
-                        <a href="blog.php#blog<?= $BlogID ?>"><?= $Title ?></a>
-                    </li>
-                <?
-                }
-                ?>
-            </ul>
-        </div>
+        } ?>
 
         <!-- Site History -->
         <?
@@ -308,11 +268,16 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
         <!-- Stats -->
         <div class="SidebarItemStats SidebarItem Box">
             <div class="SidebarItem-header Box-header">
-                <?= Lang::get('index.stats') ?>
+                <div class="SidebarItem-headerTitle">
+                    <?= t('server.index.stats') ?>
+                </div>
+                <div class="SidebarItem-headerActions">
+
+                </div>
             </div>
             <ul class="SidebarItem-body Box-body SidebarList">
                 <? if (CONFIG['USER_LIMIT'] > 0) { ?>
-                    <li><?= Lang::get('index.user_limit') ?>: <?= number_format(CONFIG['USER_LIMIT']) ?></li>
+                    <li><?= t('server.index.user_limit') ?>: <?= number_format(CONFIG['USER_LIMIT']) ?></li>
                 <?
                 }
                 if (($UserCount = $Cache->get_value('stats_user_count')) === false) {
@@ -326,8 +291,9 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
                 $UserCount = (int)$UserCount;
                 ?>
                 <li class="SidebarList-item">
-                    <?= Lang::get('index.enable_users') ?>:
-                    <?= number_format($UserCount) ?>
+                    <?= t('server.index.enable_users') ?>:
+                    <?= number_format($UserCount) ?>&nbsp;
+                    <a href="stats.php?action=users" class="brackets"><?= t('server.index.details') ?></a>
                 </li>
                 <?
                 if (($UserStats = $Cache->get_value('stats_users')) === false) {
@@ -352,9 +318,9 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
                     $Cache->cache_value('stats_users', $UserStats, 0);
                 }
                 ?>
-                <li class="SidebarList-item"><?= Lang::get('index.day_visit') ?>: <?= number_format($UserStats['Day']) ?> (<?= number_format($UserStats['Day'] / $UserCount * 100, 2) ?>%)</li>
-                <li class="SidebarList-item"><?= Lang::get('index.wek_visit') ?>: <?= number_format($UserStats['Week']) ?> (<?= number_format($UserStats['Week'] / $UserCount * 100, 2) ?>%)</li>
-                <li class="SidebarList-item"><?= Lang::get('index.mon_visit') ?>: <?= number_format($UserStats['Month']) ?> (<?= number_format($UserStats['Month'] / $UserCount * 100, 2) ?>%)</li>
+                <li class="SidebarList-item"><?= t('server.index.day_visit') ?>: <?= number_format($UserStats['Day']) ?> (<?= number_format($UserStats['Day'] / $UserCount * 100, 2) ?>%)</li>
+                <li class="SidebarList-item"><?= t('server.index.wek_visit') ?>: <?= number_format($UserStats['Week']) ?> (<?= number_format($UserStats['Week'] / $UserCount * 100, 2) ?>%)</li>
+                <li class="SidebarList-item"><?= t('server.index.mon_visit') ?>: <?= number_format($UserStats['Month']) ?> (<?= number_format($UserStats['Month'] / $UserCount * 100, 2) ?>%)</li>
                 <?
                 if (($TorrentCount = $Cache->get_value('stats_torrent_count')) === false) {
                     $DB->query("
@@ -387,9 +353,10 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
                     $Cache->cache_value('stats_artist_count', $ArtistCount, 604860); // staggered 1 week cache
                 }
                 ?>
-                <li class="SidebarList-item"><?= Lang::get('global.torrents') ?>: <?= number_format($TorrentCount) ?></li>
-                <li class="SidebarList-item"><?= Lang::get('index.moviegroups') ?>: <?= number_format($MoviesCount) ?></li>
-                <li class="SidebarList-item"><?= Lang::get('global.artist') ?>: <?= number_format($ArtistCount) ?></li>
+                <li class="SidebarList-item"><?= t('server.common.torrents') ?>: <?= number_format($TorrentCount) ?>&nbsp;<a href="stats.php?action=torrents" class="brackets"><?= t('server.index.details') ?></a>
+                </li>
+                <li class="SidebarList-item"><?= t('server.index.moviegroups') ?>: <?= number_format($MoviesCount) ?></li>
+                <li class="SidebarList-item"><?= t('server.common.artist') ?>: <?= number_format($ArtistCount) ?></li>
                 <?
                 //End Torrent Stats
                 if (($CollageCount = $Cache->get_value('stats_collages')) === false) {
@@ -401,7 +368,7 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
                 }
                 if (CONFIG['ENABLE_COLLAGES']) {
                 ?>
-                    <li class="SidebarList-item"><?= Lang::get('index.collage') ?>: <?= number_format($CollageCount) ?></li>
+                    <li class="SidebarList-item"><?= t('server.index.collage') ?>: <?= number_format($CollageCount) ?></li>
                 <?
                 }
                 if (($RequestStats = $Cache->get_value('stats_requests')) === false) {
@@ -420,11 +387,11 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
                 }
                 $RequestPercentage = $RequestCount > 0 ? $FilledCount / $RequestCount * 100 : 0;
                 ?>
-                <li class="SidebarList-item"><?= Lang::get('global.requests') ?>: <?= number_format($RequestCount) ?> (<?= number_format($RequestPercentage, 2) ?>% <?= Lang::get('index.filled') ?>)</li>
+                <li class="SidebarList-item"><?= t('server.common.requests') ?>: <?= number_format($RequestCount) ?> (<?= number_format($RequestPercentage, 2) ?>% <?= t('server.index.filled') ?>)</li>
                 <?
                 if ($SnatchStats = $Cache->get_value('stats_snatches')) {
                 ?>
-                    <li class="SidebarList-item"><?= Lang::get('index.snatches') ?>: <?= number_format($SnatchStats) ?></li>
+                    <li class="SidebarList-item"><?= t('server.index.snatches') ?>: <?= number_format($SnatchStats) ?></li>
                 <?
                 }
                 if (($PeerStats = $Cache->get_value('stats_peers')) === false) {
@@ -456,117 +423,89 @@ View::show_header(Lang::get('index.index'), 'comments', 'PageHome');
                     $PeerCount = $SeederCount = $LeecherCount = $Ratio = 'Server busy';
                 }
                 ?>
-                <li class="SidebarList-item"><?= Lang::get('index.peers') ?>: <?= $PeerCount ?></li>
-                <li class="SidebarList-item"><?= Lang::get('global.seeders') ?>: <?= $SeederCount ?></li>
-                <li class="SidebarList-item"><?= Lang::get('global.leechers') ?>: <?= $LeecherCount ?></li>
-                <li><?= Lang::get('index.s_l_ratio') ?>: <?= $Ratio ?></li>
+                <li class="SidebarList-item"><?= t('server.index.peers') ?>: <?= $PeerCount ?>&nbsp;<a href="stats.php?action=peers" class="brackets"><?= t('server.index.details') ?></a></li>
+                <li class="SidebarList-item"><?= t('server.common.seeders') ?>: <?= $SeederCount ?></li>
+                <li class="SidebarList-item"><?= t('server.common.leechers') ?>: <?= $LeecherCount ?></li>
+                <li><?= t('server.index.s_l_ratio') ?>: <?= $Ratio ?></li>
             </ul>
         </div>
 
         <!-- Social Links -->
         <div class="Box">
-            <div class="Social Box-header"><?= Lang::get('index.links') ?></div>
+            <div class="Social Box-header"><?= t('server.index.links') ?></div>
             <div class="Social Box-body">
-                <a target="_blank" href="feeds.php?feed=feed_news&amp;user=<?= G::$LoggedUser['ID'] ?>&amp;auth=<?= G::$LoggedUser['RSS_Auth'] ?>&amp;passkey=<?= G::$LoggedUser['torrent_pass'] ?>&amp;authkey=<?= G::$LoggedUser['AuthKey'] ?>" data-tooltip="<?= Lang::get('common.rss') ?>">
-                    <?= icon('rss') ?>
-                </a>
-                <a target="_blank" href="<?= CONFIG['TG_GROUP'] ?>" data-tooltip="<?= Lang::get('common.telegram') ?>">
+
+                <a target="_blank" href="<?= CONFIG['TG_GROUP'] ?>" data-tooltip="<?= t('server.common.telegram') ?>">
                     <?= icon('telegram') ?>
                 </a>
-                <a target="_blank" href="https://github.com/Mosasauroidea/GazellePW" data-tooltip="<?= Lang::get('common.github') ?>">
+                <a target="_blank" href="https://github.com/Mosasauroidea/GazellePW" data-tooltip="<?= t('server.common.github') ?>">
                     <?= icon('github') ?>
+                </a>
+                <a target="_blank" href="https://crowdin.com/project/gazellepw" data-tooltip="Crowdin">
+                    <?= icon('crowdin') ?>
                 </a>
             </div>
         </div>
     </div>
 
     <div class="LayoutMainSidebar-main">
-        <!-- Active Movies -->
-        <div class="IndexTop10Movie Box">
-            <div class="Box-header">
-                <?= Lang::get('index.popular_movies') ?>
-            </div>
-            <div class="Box-body">
-                <?
-                $Top10Movies = new Top10Movies();
-                $Data = $Top10Movies->getData(
-                    'active_week',
-                    [
-                        'Limit' => 10,
-                    ]
-                );
-                $tableRender = new TorrentGroupCoverTableView($Data);
-                $tableRender->render([
-                    'Variant' => 'OneLine'
-                ]);
-                ?>
-            </div>
-        </div>
 
-        <!-- Anouncements -->
-        <div class="PostBox Box">
-            <div class="Box-header">
-                <a href="forums.php?action=viewforum&amp;forumid=<?= CONFIG['ANNOUNCEMENT_FORUM_ID'] ?>">
-                    <?= Lang::get('index.announcements') ?>
-                </a>
-            </div>
-            <div class="Box-body PostList PostListNews">
-                <?
-                $Count = 0;
-                foreach ($News as $NewsItem) {
-                    list($NewsID, $Title, $Body, $NewsTime, $IsSticky) = $NewsItem;
-                    if (strtotime($NewsTime) > time()) {
-                        continue;
-                    }
-                ?>
-                    <div id="news<?= $NewsID ?>" class="Post news_post">
-                        <div class="Post-header">
-                            <div class="Post-headerLeft">
-                                <a class="Post-headerTitle HtmlText  <?= $IsSticky ? 'is-sticky' : '' ?>" href="#" onclick="$('#newsbody<?= $NewsID ?>').gtoggle(); return false;">
-                                    <?= Text::full_format($Title) ?>
-                                </a>
-                            </div>
-                            <div class="Post-headerActions">
-                                <?= time_diff($NewsTime); ?>
-                            </div>
-                        </div>
-                        <div id="newsbody<?= $NewsID ?>" class="HtmlText PostArticle Post-body hidden">
-                            <?= Text::full_format($Body) ?>
-                            <div>
-                                <a class="brackets" href="forums.php?action=viewthread&amp;threadid=<?= $NewsID ?>">
-                                    <?= Lang::get('index.discuss') ?>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
+        <? include('hot_movies.php'); ?>
+
+        <? if (count($News) > 0) { ?>
+            <!-- Anouncements -->
+            <div class="Group">
+                <div class="Group-body">
                     <?
-                    if (++$Count > ($NewsCount - 1)) {
-                        break;
-                    }
+                    $Count = 0;
+                    foreach ($News as $NewsItem) {
+                        list($NewsID, $Title, $Body, $NewsTime, $IsSticky) = $NewsItem;
+                        if (strtotime($NewsTime) > time()) {
+                            continue;
+                        }
                     ?>
-                <? } ?>
+                        <div id="news<?= $NewsID ?>" class="Post news_post ">
+                            <div class="Post-header">
+                                <div class="Post-headerLeft">
+                                    <div class="Post-headerTitle HtmlText  <?= $IsSticky ? 'is-sticky' : '' ?>" href="#">
+                                        <?= Text::full_format($Title) ?>
+                                    </div>
+                                    - <?= time_diff($NewsTime); ?>
+                                </div>
+                                <div class="Post-headerActions">
+                                    <a class="brackets" href="forums.php?action=viewthread&amp;threadid=<?= $NewsID ?>">
+                                        <?= t('server.index.discuss') ?>
+                                    </a>
+                                    - <a href="#" onclick="globalapp.toggleAny(event, '#newsbody<?= $NewsID ?>');return false;">
+                                        <span class="u-toggleAny-show u-hidden"><?= t('server.common.show') ?></span>
+                                        <span class="u-toggleAny-hide"><?= t('server.common.hide') ?></span>
+                                    </a>
+                                </div>
+
+                            </div>
+                            <div id="newsbody<?= $NewsID ?>" class="HtmlText PostArticle Post-body">
+                                <?= Text::full_format($Body) ?>
+                            </div>
+                        </div>
+                        <?
+                        if (++$Count > ($NewsCount - 1)) {
+                            break;
+                        }
+                        ?>
+                    <? } ?>
+                    <div class="PostList-actions">
+                        <a href="forums.php?action=viewforum&amp;forumid=<?= CONFIG['NEWS_FORUM_ID'] ?>">
+                            <?= t('server.torrents.view_all') ?>
+                        </a>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="Home-stats Box">
-            <div class="Box-header">
-                <? if (CONFIG['IS_DEV']) { ?>
-                    <a href="/stats.php">
-                        <?= Lang::get('index.stats') ?>
-                    </a>
-                <? } else { ?>
-                    <?= Lang::get('index.stats') ?>
-                <? } ?>
-            </div>
-            <div class="Box-body" id="root-stats"></div>
-        </div>
+        <? } ?>
     </div>
 </div>
 <?
-if (IS_DEV) {
-    Stats::torrentByDay();
-}
 
-View::show_footer(array('disclaimer' => true), 'home.jsx');
+View::show_footer(array('disclaimer' => true));
 
 function contest() {
     global $DB, $Cache, $LoggedUser;

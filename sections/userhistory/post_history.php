@@ -23,7 +23,7 @@ list($Page, $Limit) = Format::page_limit($PerPage);
 $UserInfo = Users::user_info($UserID);
 extract(array_intersect_key($UserInfo, array_flip(array('Username', 'Enabled', 'Title', 'Avatar', 'Donor', 'Warned'))));
 
-View::show_header(Lang::get('userhistory.post_history_for_before') . "$Username" . Lang::get('userhistory.post_history_for_after'), 'subscriptions,comments,bbcode', 'PageUserHistoryPost');
+View::show_header(t('server.userhistory.post_history_for', ['Values' => [$Username]]), 'subscriptions,comments,bbcode', 'PageUserHistoryPost');
 
 $ViewingOwn = ($UserID == $LoggedUser['ID']);
 $ShowUnread = ($ViewingOwn && (!isset($_GET['showunread']) || !!$_GET['showunread']));
@@ -160,11 +160,19 @@ if ($ShowGrouped) {
         <h2 class="BodyHeader-nav">
             <?
             if ($ShowGrouped) {
-                echo Lang::get('userhistory.grouped') . ($ShowUnread ? Lang::get('userhistory.unread') : '') . Lang::get('userhistory.post_history_for_before') . "<a href=\"user.php?id=$UserID\">$Username</a>" . Lang::get('userhistory.post_history_for_after');
+                echo t('server.userhistory.grouped')
+                    . ($ShowUnread ? t('server.userhistory.unread') : '')
+                    . t('server.userhistory.post_history_for', ['Values' => [
+                        Users::format_username($UserID)
+                    ]]);
             } elseif ($ShowUnread) {
-                echo Lang::get('userhistory.unread_post_history_for_before') . "<a href=\"user.php?id=$UserID\">$Username</a>" . Lang::get('userhistory.unread_post_history_for_after');
+                echo t('server.userhistory.unread_post_history_for', ['Values' => [
+                    Users::format_username($UserID)
+                ]]);
             } else {
-                echo Lang::get('userhistory.post_history_for_before') . "<a href=\"user.php?id=$UserID\">$Username</a>" . Lang::get('userhistory.post_history_for_after');
+                echo t('server.userhistory.post_history_for', ['Values' => [
+                    Users::format_username($UserID)
+                ]]);
             }
             ?>
         </h2>
@@ -176,125 +184,127 @@ if ($ShowGrouped) {
 
                 if (!$ShowUnread) {
                     if ($ShowGrouped) { ?>
-                        <a href="userhistory.php?action=posts&amp;userid=<?= $UserID ?>&amp;showunread=0&amp;group=0" class="brackets"><?= Lang::get('userhistory.show_all_posts') ?></a>
+                        <a href="userhistory.php?action=posts&amp;userid=<?= $UserID ?>&amp;showunread=0&amp;group=0" class="brackets"><?= t('server.userhistory.show_all_posts') ?></a>
                     <?      } else { ?>
-                        <a href="userhistory.php?action=posts&amp;userid=<?= $UserID ?>&amp;showunread=0&amp;group=1" class="brackets"><?= Lang::get('userhistory.show_all_posts_grouped') ?></a>
+                        <a href="userhistory.php?action=posts&amp;userid=<?= $UserID ?>&amp;showunread=0&amp;group=1" class="brackets"><?= t('server.userhistory.show_all_posts_grouped') ?></a>
                     <?      } ?>
-                    <a href="userhistory.php?action=posts&amp;userid=<?= $UserID ?>&amp;showunread=1&amp;group=1" class="brackets"><?= Lang::get('userhistory.only_display_posts_with_unread_replies_grouped') ?></a>
+                    <a href="userhistory.php?action=posts&amp;userid=<?= $UserID ?>&amp;showunread=1&amp;group=1" class="brackets"><?= t('server.userhistory.only_display_posts_with_unread_replies_grouped') ?></a>
                 <?  } else { ?>
-                    <a href="userhistory.php?action=posts&amp;userid=<?= $UserID ?>&amp;showunread=0&amp;group=0" class="brackets"><?= Lang::get('userhistory.show_all_posts') ?></a>
+                    <a href="userhistory.php?action=posts&amp;userid=<?= $UserID ?>&amp;showunread=0&amp;group=0" class="brackets"><?= t('server.userhistory.show_all_posts') ?></a>
                     <? if (!$ShowGrouped) { ?>
-                        <a href="userhistory.php?action=posts&amp;userid=<?= $UserID ?>&amp;showunread=1&amp;group=1" class="brackets"><?= Lang::get('userhistory.only_display_posts_with_unread_replies_grouped') ?></a>
+                        <a href="userhistory.php?action=posts&amp;userid=<?= $UserID ?>&amp;showunread=1&amp;group=1" class="brackets"><?= t('server.userhistory.only_display_posts_with_unread_replies_grouped') ?></a>
                     <?      } else { ?>
-                        <a href="userhistory.php?action=posts&amp;userid=<?= $UserID ?>&amp;showunread=1&amp;group=0" class="brackets"><?= Lang::get('userhistory.only_display_posts_with_unread_replies') ?></a>
+                        <a href="userhistory.php?action=posts&amp;userid=<?= $UserID ?>&amp;showunread=1&amp;group=0" class="brackets"><?= t('server.userhistory.only_display_posts_with_unread_replies') ?></a>
                 <?      }
                 }
                 ?>
-                <a href="userhistory.php?action=subscriptions" class="brackets"><?= Lang::get('userhistory.go_to_subscriptions') ?></a>
+                <a href="userhistory.php?action=subscriptions" class="brackets"><?= t('server.userhistory.go_to_subscriptions') ?></a>
             <?
             } else {
             ?>
-                <a href="forums.php?action=search&amp;type=body&amp;user=<?= $Username ?>" class="brackets"><?= Lang::get('userhistory.search') ?></a>
+                <a href="forums.php?action=search&amp;type=body&amp;user=<?= $Username ?>" class="brackets"><?= t('server.userhistory.search') ?></a>
             <?
             }
             ?>
         </div>
     </div>
-    <?
-    if (empty($Results)) {
-    ?>
-        <div class="center">
-            <?= Lang::get('userhistory.no_topics') ?><?= $ShowUnread ? Lang::get('userhistory.with_unread_posts') : '' ?>
-        </div>
-    <?
-    } else {
-    ?>
-        <div class="BodyNavLinks">
-            <?
-            $Pages = Format::get_pages($Page, $Results, $PerPage, 11);
-            echo $Pages;
-            ?>
-        </div>
+    <div class="BodyContent">
         <?
-        $QueryID = $DB->get_query_id();
-        while (list($PostID, $AddedTime, $Body, $EditedUserID, $EditedTime, $EditedUsername, $TopicID, $ThreadTitle, $LastPostID, $LastRead, $Locked, $Sticky) = $DB->next_record()) {
+        if (empty($Results)) {
         ?>
-            <div class="TableContainer">
-                <table class="TableForumPost Table <?= !Users::has_avatars_enabled() ? ' noavatar' : '' ?>" id="post<?= $PostID ?>">
-                    <tr class="Table-rowHeader">
-                        <td class="Table-cell" colspan="<?= Users::has_avatars_enabled() ? 2 : 1 ?>">
-                            <div class="TableForumPostHeader">
-                                <div class="TableForumPostHeader-info">
-                                    <?= time_diff($AddedTime) ?>
-                                    <?= Lang::get('userhistory.in') ?>
-                                    <a href="forums.php?action=viewthread&amp;threadid=<?= $TopicID ?>&amp;postid=<?= $PostID ?>#post<?= $PostID ?>" data-tooltip="<?= display_str($ThreadTitle) ?>">
-                                        <?= Format::cut_string($ThreadTitle, 200) ?>
-                                    </a>
-                                    <?
-                                    if ($ViewingOwn) {
-                                        if ((!$Locked || $Sticky) && (!$LastRead || $LastRead < $LastPostID)) { ?>
-                                            <span class="u-colorWarning">(<?= Lang::get('userhistory.new') ?>!)</span>
+            <div class="center">
+                <?= t('server.userhistory.no_topics') ?><?= $ShowUnread ? t('server.userhistory.with_unread_posts') : '' ?>
+            </div>
+        <?
+        } else {
+        ?>
+            <div class="BodyNavLinks">
+                <?
+                $Pages = Format::get_pages($Page, $Results, $PerPage, 11);
+                echo $Pages;
+                ?>
+            </div>
+            <?
+            $QueryID = $DB->get_query_id();
+            while (list($PostID, $AddedTime, $Body, $EditedUserID, $EditedTime, $EditedUsername, $TopicID, $ThreadTitle, $LastPostID, $LastRead, $Locked, $Sticky) = $DB->next_record()) {
+            ?>
+                <div class="TableContainer">
+                    <table class="TableForumPost Table <?= !Users::has_avatars_enabled() ? ' noavatar' : '' ?>" id="post<?= $PostID ?>">
+                        <tr class="Table-rowHeader">
+                            <td class="Table-cell" colspan="<?= Users::has_avatars_enabled() ? 2 : 1 ?>">
+                                <div class="TableForumPostHeader">
+                                    <div class="TableForumPostHeader-info">
+                                        <?= time_diff($AddedTime) ?>
+                                        <?= t('server.userhistory.in') ?>
+                                        <a href="forums.php?action=viewthread&amp;threadid=<?= $TopicID ?>&amp;postid=<?= $PostID ?>#post<?= $PostID ?>" data-tooltip="<?= display_str($ThreadTitle) ?>">
+                                            <?= Format::cut_string($ThreadTitle, 200) ?>
+                                        </a>
                                         <?
-                                        }
-                                        ?>
-                                        <? if (!empty($LastRead)) { ?>
-                                            <a class="TableForum-jumpToLastRead" data-tooltip="<?= Lang::get('global.jump_to_last_read') ?>" href="forums.php?action=viewthread&amp;threadid=<?= $TopicID ?>&amp;postid=<?= $LastRead ?>#post<?= $LastRead ?>">
-                                                <?= icon("Forum/jump-to-last-read") ?>
-                                            </a>
-                                        <? }
-                                    } else {
-                                        ?>
-                                        </span>
-                                    <? }
-                                    ?>
-                                </div>
-                                <div class="TableForumPostHeader-actions" id="bar<?= $PostID ?>">
-                                    <? if ($ViewingOwn && !in_array($TopicID, $UserSubscriptions)) { ?>
-                                        <a href="#" onclick="Subscribe(<?= $TopicID ?>); $('.subscribelink<?= $TopicID ?>').remove(); return false;" class="brackets subscribelink<?= $TopicID ?>"><?= Lang::get('global.subscribe') ?></a>
-                                    <? } ?>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    <?
-                    if (!$ShowGrouped) {
-                    ?>
-                        <tr class="TableForumPost-cellContent Table-row">
-                            <? if (Users::has_avatars_enabled()) { ?>
-                                <td class="TableForumPost-cellAvatar Table-cell">
-                                    <?= Users::show_avatar($Avatar, $UserID, $Username, $HeavyInfo['DisableAvatars']) ?>
-                                </td>
-                            <?  } ?>
-                            <td class="TableForumPost-cellBody Table-cell">
-                                <div class="TableForumPostBody" id="content<?= $PostID ?>">
-                                    <div class="TableForumPostBody-text HtmlText PostArticle">
-                                        <?= Text::full_format($Body) ?>
-                                    </div>
-                                    <div class="TableForumPostBody-actions">
-                                        <? if ($EditedUserID) { ?>
-                                            <br />
-                                            <br />
-                                            <span class="last_edited">
-                                                <? if (check_perms('site_moderate_forums')) { ?>
-                                                    <a href="#content<?= $PostID ?>" onclick="LoadEdit(<?= $PostID ?>, 1);">&laquo;</a>
-                                                <?              } ?>
-                                                <?= Lang::get('userhistory.last_edited_by') ?>
-                                                <?= Users::format_username($EditedUserID, false, false, false) ?> <?= time_diff($EditedTime, 2, true, true) ?>
+                                        if ($ViewingOwn) {
+                                            if ((!$Locked || $Sticky) && (!$LastRead || $LastRead < $LastPostID)) { ?>
+                                                <span class="u-colorWarning">(<?= t('server.userhistory.new') ?>!)</span>
+                                            <?
+                                            }
+                                            ?>
+                                            <? if (!empty($LastRead)) { ?>
+                                                <a class="TableForum-jumpToLastRead" data-tooltip="<?= t('server.common.jump_to_last_read') ?>" href="forums.php?action=viewthread&amp;threadid=<?= $TopicID ?>&amp;postid=<?= $LastRead ?>#post<?= $LastRead ?>">
+                                                    <?= icon("Forum/jump-to-last-read") ?>
+                                                </a>
+                                            <? }
+                                        } else {
+                                            ?>
                                             </span>
-                                        <?          } ?>
+                                        <? }
+                                        ?>
+                                    </div>
+                                    <div class="TableForumPostHeader-actions" id="bar<?= $PostID ?>">
+                                        <? if ($ViewingOwn && !in_array($TopicID, $UserSubscriptions)) { ?>
+                                            <a href="#" onclick="Subscribe(<?= $TopicID ?>); $('.subscribelink<?= $TopicID ?>').remove(); return false;" class="brackets subscribelink<?= $TopicID ?>"><?= t('server.common.subscribe') ?></a>
+                                        <? } ?>
                                     </div>
                                 </div>
                             </td>
                         </tr>
-                    <?      }
-                    $DB->set_query_id($QueryID);
-                    ?>
-                </table>
+                        <?
+                        if (!$ShowGrouped) {
+                        ?>
+                            <tr class="TableForumPost-cellContent Table-row">
+                                <? if (Users::has_avatars_enabled()) { ?>
+                                    <td class="TableForumPost-cellAvatar Table-cell">
+                                        <?= Users::show_avatar($Avatar, $UserID, $Username, $HeavyInfo['DisableAvatars']) ?>
+                                    </td>
+                                <?  } ?>
+                                <td class="TableForumPost-cellBody Table-cell">
+                                    <div class="TableForumPostBody" id="content<?= $PostID ?>">
+                                        <div class="TableForumPostBody-text HtmlText PostArticle">
+                                            <?= Text::full_format($Body) ?>
+                                        </div>
+                                        <div class="TableForumPostBody-actions">
+                                            <? if ($EditedUserID) { ?>
+                                                <br />
+                                                <br />
+                                                <span class="last_edited">
+                                                    <? if (check_perms('site_moderate_forums')) { ?>
+                                                        <a href="#content<?= $PostID ?>" onclick="LoadEdit(<?= $PostID ?>, 1);">&laquo;</a>
+                                                    <?              } ?>
+                                                    <?= t('server.userhistory.last_edited_by') ?>
+                                                    <?= Users::format_username($EditedUserID, false, false, false) ?> <?= time_diff($EditedTime, 2, true, true) ?>
+                                                </span>
+                                            <?          } ?>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?      }
+                        $DB->set_query_id($QueryID);
+                        ?>
+                    </table>
+                </div>
+            <?  } ?>
+            <div class="BodyNavLinks">
+                <?= $Pages ?>
             </div>
-        <?  } ?>
-        <div class="BodyNavLinks">
-            <?= $Pages ?>
-        </div>
-    <? } ?>
+        <? } ?>
+    </div>
 </div>
 <? View::show_footer(); ?>

@@ -99,6 +99,13 @@ cell
 
 .TableTorrent-cellStat {
   padding: 0 20px;
+  width: 40px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.TableTorrent-cellStatSize {
+  padding: 0 20px;
   width: 60px;
   text-align: right;
   white-space: nowrap;
@@ -115,7 +122,11 @@ cell
 }
 
 .TableTorrent-cellUploadTime {
-  width: 150px;
+  width: 200px;
+}
+
+.TableTorrent-cellID {
+  width: 50px;
 }
 
 .TableTorrent-cellUserName {
@@ -140,18 +151,21 @@ cell
 }
 
 /* Title */
-.TableTorrent-title {
-  display: flex;
-  gap: var(--global-space-sm);
-  align-items: center;
+.TableTorrent-titleCheck {
+  vertical-align: middle;
+  display: inline-flex;
 }
 .TableTorrent-titleCheck .icon {
   width: 13px;
   height: 13px;
 }
 .TableTorrent-titleActions {
-  margin-left: auto;
-  white-space: nowrap;
+  float: right;
+  margin-left: 10px;
+}
+
+.TableTorrent-titleCheck .TableTorrent-check {
+  vertical-align: middle;
 }
 
 /* Slot */
@@ -163,6 +177,7 @@ cell
   font-size: 14px;
   opacity: var(--slotButton-opacity);
   margin: 0 7px;
+  vertical-align: sub;
 }
 
 .TableTorrent-slotFilterButton:hover {
@@ -227,13 +242,11 @@ cell
   border-left: 1px solid var(--slotEnQuality-color);
 }
 
-.TableTorrent-rowTitle:is([data-slot='retention'], [data-slot='feature'])
-  .Table-cell:first-child {
+.TableTorrent-rowTitle:is([data-slot='retention'], [data-slot='feature']) .Table-cell:first-child {
   border-left: 1px solid var(--slotRetenion-color);
 }
 
-.TableTorrent-rowTitle:is([data-slot='diy'], [data-slot='remux'], [data-slot='untouched'])
-  .Table-cell:first-child {
+.TableTorrent-rowTitle:is([data-slot='diy'], [data-slot='remux'], [data-slot='untouched']) .Table-cell:first-child {
   border-left: 1px solid var(--slotDiy-color);
 }
 
@@ -288,9 +301,14 @@ TableTorrent-movieInfo
   width: 100%;
 }
 
-.TableTorrent-movieInfoTitle a {
+.TableTorrent-movieInfoTitle:not(.TableTorrent-compact) a {
   font-size: 20px;
   font-weight: 600;
+  color: var(--TableTorrent-movieInfoTitle-color);
+}
+
+.TableTorrent-movieInfoTitle:is(.TableTorrent-compact) a {
+  font-size: 16px;
   color: var(--TableTorrent-movieInfoTitle-color);
 }
 
@@ -300,7 +318,6 @@ TableTorrent-movieInfo
 
 .TableTorrent-movieInfoYear {
   color: var(--TableTorrent-movieInfoYear-color);
-  font-size: 80%;
   font-style: italic;
 }
 
@@ -315,6 +332,34 @@ TableTorrent-movieInfo
   background: var(--MovieInfo-button-background);
   border: var(--MovieInfo-button-border);
   width: fit-content;
+}
+
+.TableTorrent-movieInfoCompactItems {
+  border-radius: var(--global-borderRadius);
+  display: inline-flex;
+  font-size: 12px;
+  background: var(--MovieInfo-button-background);
+  border: var(--MovieInfo-button-border);
+  width: fit-content;
+}
+
+.TableTorrent-movieInfoCompactItem {
+  display: flex;
+  padding-left: 5px;
+  padding-right: 5px;
+
+  color: var(--Movieinfo-button-color);
+  align-items: center;
+  gap: var(--global-space-sm);
+}
+
+.TableTorrent-movieInfoCompactItem .icon {
+  width: 12px;
+  height: 12px;
+}
+
+.TableTorrent-movieInfoCompactItem:not(:last-child) {
+  border-right: var(--MovieInfo-button-border);
 }
 
 .TableTorrent-movieInfoFactsItem {
@@ -354,7 +399,6 @@ TableTorrent-movieInfo
   color: var(--Movieinfo-button-color);
   padding: 3px 5px;
 }
-
 .TableTorrent-movieInfoTagsItem:hover {
   background: var(--MovieInfo-button-onHover-background);
   color: var(--Movieinfo-button-onhover-color);
@@ -372,14 +416,11 @@ TableTorrent-movieInfo
 }
 
 .TableTorrent-movieInfoAction,
-:is(#torrents, #bookmarks, #top10, #artist)
-  :is(.remove_bookmark, .add_bookmark)
-  .icon {
+:is(#torrents, #bookmarks, #top10, #artist) :is(.remove_bookmark, .add_bookmark) .icon {
   color: #777;
 }
 
-.TableTorrent-movieInfoAction
-  :is(.add_bookmark .icon.remove-icon, .remove_bookmark .icon.add-icon),
+.TableTorrent-movieInfoAction :is(.add_bookmark .icon.remove-icon, .remove_bookmark .icon.add-icon),
 :is(#torrents, #bookmarks, #top10, #artist, #collage, #userhistory)
   :is(.add_bookmark svg.remove-icon, .remove_bookmark svg.add-icon) {
   display: none;
@@ -491,4 +532,9 @@ ToggleGroup is-toHide
 
 #subtitles_container {
   width: 100%;
+}
+
+.TableTorrent .TableTorrent-rowDetail .TableTorrent-cellDetail {
+  padding-top: var(--global-space-default);
+  padding-bottom: var(--global-space-default);
 }

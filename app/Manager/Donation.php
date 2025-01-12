@@ -5,6 +5,7 @@ namespace Gazelle\Manager;
 use Misc;
 use Lang;
 use DB_MYSQL_DuplicateKeyException;
+use Gazelle\Action\RewardInfo;
 
 class DonationSource {
     const PrepaidCard = "Prepaid Card";
@@ -25,8 +26,7 @@ class DonationCurrency {
     const BTC = "BTC";
 }
 class Donation extends \Gazelle\Base {
-
-
+    private Reward $rewardManager;
     private static $ForumDescriptions = array(
         "I want only two houses, rather than seven... I feel like letting go of things",
         "A billion here, a billion there, sooner or later it adds up to real money.",
@@ -50,9 +50,14 @@ class Donation extends \Gazelle\Base {
         "I work very hard and I’m worth every cent!",
         "To all my Barbies out there who date Benjamin Franklin, George Washington, Abraham Lincoln, you'll be better off in life. Get that money."
     );
+    public function __construct() {
+        parent::__construct();
+        $this->rewardManager = new Reward;
+    }
 
     public function moderatorAdjust(int $UserID, int $Rank, int $TotalRank, string $Reason, int $who) {
         $this->donate($UserID, [
+            'Manipulation' => 'Direct',
             "Source" => "Modify Values",
             "Rank" => (int)$Rank,
             "TotalRank" => (int)$TotalRank,
@@ -76,7 +81,7 @@ class Donation extends \Gazelle\Base {
     public function prepaidCardDonate(int $PrepaidCardID, $Who) {
         $prepaidCardInfo = $this->prepaidCard($PrepaidCardID);
         if (empty($prepaidCardInfo)) {
-            return Lang::get('donate.donate_error');
+            return t('server.donate.donate_error');
         }
         $UserID = $prepaidCardInfo['user_id'];
         $this->db->prepared_query(
@@ -110,7 +115,7 @@ class Donation extends \Gazelle\Base {
         ]);
     }
 
-    private function currency_exchange($Amount, $Currency) {
+    function currencyExchange($Amount, $Currency) {
         switch ($Currency) {
             case 'BTC':
                 $XBT = new \Gazelle\Manager\XBT;
@@ -161,7 +166,7 @@ class Donation extends \Gazelle\Base {
             $this->db->prepared_query('INSERT INTO donations_prepaid_card (user_id, create_time, card_num, card_secret, face_value)
                 VALUES (?, ?, ?, ?, ?)', $UserID, $Date, $CardNum, $CardSecret, $FaceValue);
         } catch (DB_MYSQL_DuplicateKeyException $e) {
-            return Lang::get('donate.duplicated_card');
+            return t('server.donate.duplicated_card');
         }
 
         $this->cache->delete_value("user_donations_prepaid_card_$UserID");
@@ -170,7 +175,7 @@ class Donation extends \Gazelle\Base {
     }
 
     public function getPendingDonationCount() {
-        if (!$Count = $this->cache->get_value("donations_pending_count")) {
+        if ($Count = $this->cache->get_value("donations_pending_count") === false) {
             $this->db->prepared_query('SELECT count(*) FROM donations_prepaid_card where status = ?', PrepaidCardStatus::Pending);
             list($Count) = $this->db->next_record();
             $this->cache->cache_value("donations_pending_count", $Count);
@@ -180,14 +185,13 @@ class Donation extends \Gazelle\Base {
 
 
     public function getYearProgress() {
-        if (!$YearSum = $this->cache->get_value("donations_year_sum")) {
-
+        if (($YearSum = $this->cache->get_value("donations_year_sum")) === false) {
             $this->db->query(
                 "SELECT sum(rank) from donations 
 	            where time >= '" . date("Y-01-01") . "'"
             );
             list($YearSum) = $this->db->next_record();
-            $this->cache->cache_value("donations_year_sum", $YearSum);
+            $this->cache->cache_value("donations_year_sum", $YearSum, 86400);
         }
         if (empty($YearSum)) {
             return 0;
@@ -198,7 +202,7 @@ class Donation extends \Gazelle\Base {
     public function rejectPrepaidCard($PrepaidCardID) {
         $prepaidCardInfo = $this->prepaidCard($PrepaidCardID);
         if (empty($prepaidCardInfo)) {
-            return Lang::get('donate.donate_error');
+            return t('server.donate.donate_error');
         }
         $UserID = $prepaidCardInfo['user_id'];
 
@@ -224,7 +228,7 @@ class Donation extends \Gazelle\Base {
 			WHERE ID = '$UserID'
 			LIMIT 1");
         if (!$this->db->has_results()) {
-            return Lang::get('donate.donate_error');
+            return t('server.donate.donate_error');
         }
 
         $this->cache->InternalCache = false;
@@ -260,7 +264,7 @@ class Donation extends \Gazelle\Base {
 						RankExpirationTime = NOW()");
         } else {
             // Donations from the store get donor points directly, no need to calculate them
-            $ConvertedPrice = $this->currency_exchange($Amount, $Currency);
+            $ConvertedPrice = $this->currencyExchange($Amount, $Currency);
             // 计算捐赠点数
             $DonorPoints = $ConvertedPrice / 50;
             $IncreaseRank = $DonorPoints;
@@ -331,7 +335,7 @@ class Donation extends \Gazelle\Base {
 
     public static function rankLabel($rank, $specialRank, $ShowOverflow = true) {
         if ($specialRank == MAX_SPECIAL_RANK) {
-            return '∞ [' . Lang::get('donate.diamond_rank') . ']';
+            return '∞ (' . t('server.donate.diamond_rank') . ')';
         }
         $label = $rank >= MAX_RANK ? MAX_RANK : $rank;
         $overflow = $rank - $label;
@@ -339,15 +343,15 @@ class Donation extends \Gazelle\Base {
             $label .= " (+$overflow)";
         }
         if ($rank >= 6) {
-            $label .= ' [' . Lang::get('donate.gold_rank') . ']';
+            $label .= ' (' . t('server.donate.gold_rank') . ')';
         } elseif ($rank >= 4) {
-            $label .= ' [' . Lang::get('donate.silver_rank') . ']';
+            $label .= ' (' . t('server.donate.silver_rank') . ')';
         } elseif ($rank >= 3) {
-            $label .= ' [' . Lang::get('donate.bronze_rank') . ']';
+            $label .= ' (' . t('server.donate.bronze_rank') . ')';
         } elseif ($rank >= 2) {
-            $label .= ' [' . Lang::get('donate.copper_rank') . ']';
+            $label .= ' (' . t('server.donate.copper_rank') . ')';
         } elseif ($rank >= 1) {
-            $label .= ' [' . Lang::get('donate.red_rank') . ']';
+            $label .= ' (' . t('server.donate.red_rank') . ')';
         }
         return $label;
     }
@@ -394,10 +398,9 @@ class Donation extends \Gazelle\Base {
 				SET SpecialRank = '$SpecialRank'
 				WHERE UserID = '$UserID'");
         if ($Invite > 0) {
-            $this->db->query("
-				UPDATE users_main
-				SET Invites = Invites + '$Invite'
-				WHERE ID = $UserID");
+            $rewardInfo = new RewardInfo;
+            $rewardInfo->inviteCount = $Invite;
+            $this->rewardManager->sendReward($rewardInfo, [$UserID], "Donor reward.", false, true);
         }
         $this->cache->delete_value("donor_info_$UserID");
         $this->db->set_query_id($QueryID);

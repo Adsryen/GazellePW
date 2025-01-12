@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import { pickBy } from 'lodash-es'
 import preact from '@preact/preset-vite'
 import mdx from '@mdx-js/rollup'
 import hq from 'alias-hq'
@@ -14,7 +15,11 @@ export default defineConfig({
       providerImportSource: '@mdx-js/react',
       remarkPlugins: [remarkGfm, remarkExtendedTable, [remarkRehype, { handlers: { ...extendedTableHandlers } }]],
     }),
-    yaml(),
+    yaml({
+      transform(data) {
+        return pickBy(data, (v, k) => k.startsWith('client.'))
+      },
+    }),
   ],
   clearScreen: false,
 
@@ -45,7 +50,8 @@ export default defineConfig({
         'src/js/globalapp/index.js',
         'src/js/pages/sitehistory/index.js',
         'src/js/pages/upload/index.js',
-        'src/js/pages/home.jsx',
+        'src/js/pages/imgupload/index.js',
+        'src/js/pages/torrents/index.js',
         'src/js/pages/userEdit.js',
         'src/js/pages/stats/index.jsx',
       ],

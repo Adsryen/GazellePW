@@ -576,11 +576,14 @@ class Referral extends \Gazelle\Base {
             $inviteKey
         );
 
-        if (defined('REFERRAL_SEND_EMAIL') && REFERRAL_SEND_EMAIL) {
+        if (CONFIG['REFERRAL_SEND_EMAIL']) {
             $message = $twig->render('emails/referral.twig', [
                 'Email' => $email,
                 'InviteKey' => $inviteKey,
-                'CONFIG' => CONFIG,
+                'DISABLED_CHAN' => CONFIG['BOT_DISABLED_CHAN'],
+                'IRC_SERVER' => CONFIG['BOT_SERVER'],
+                'SITE_NAME' => CONFIG['SITE_NAME'],
+                'SITE_URL' => CONFIG['SITE_URL'],
             ]);
 
             \Misc::send_email($email, 'You have been invited to ' . CONFIG['SITE_NAME'], $message, 'noreply', 'text/plain');

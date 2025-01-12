@@ -1,4 +1,7 @@
 <?
+
+use Gazelle\Manager\ActionTrigger;
+
 authorize();
 
 // Quick SQL injection check
@@ -24,20 +27,32 @@ if (!empty($_GET['action']) && $_GET['action'] == 'revert') { // if we're revert
     // to cite from merge: "Everything is legit, let's just confim they're not retarded"
     if (empty($_GET['confirm'])) {
         View::show_header('', '', 'PageTorrentTakeGroupEdit');
+        $TorrentCache = Torrents::get_group($GroupID, true);
+        $TorrentDetails = $TorrentCache;
+        $Name = Torrents::group_name($TorrentDetails);
 ?>
-        <div class="center thin">
+        <div class="LayoutBody">
             <div class="BodyHeader">
-                <h2 class="BodyHeader-nav"><?= Lang::get('torrents.revert_confirm') ?></h2>
+                <h2 class="BodyHeader-nav"><?= t('server.torrents.viewhistory') ?></h2>
+                <div class="BodyHeader-subNav"><?= $Name ?></div>
             </div>
-            <div class="BoxBody">
+            <div class="Form-rowList" variant="header">
+                <div class="Form-rowHeader">
+                    <div class="Form-title">
+                        <?= t('server.torrents.revert_confirm') ?>
+                    </div>
+                </div>
+                <div class="Form-row"><?= t('server.torrents.revert_confirm_body') ?><a href='torrents.php?id=<?= $GroupID ?>&amp;revisionid=<?= $RevisionID ?>'><?= $RevisionID ?></a>
+                </div>
                 <form class="confirm_form" name="torrent_group" action="torrents.php" method="get">
                     <input type="hidden" name="action" value="revert" />
                     <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
                     <input type="hidden" name="confirm" value="true" />
                     <input type="hidden" name="groupid" value="<?= $GroupID ?>" />
                     <input type="hidden" name="revisionid" value="<?= $RevisionID ?>" />
-                    <h3><?= Lang::get('torrents.revert_confirm_body_1') ?> <a href="torrents.php?id=<?= $GroupID ?>&amp;revisionid=<?= $RevisionID ?>"><?= $RevisionID ?></a><?= Lang::get('torrents.revert_confirm_body_2') ?></h3>
-                    <input class="Button" type="submit" value="Confirm" />
+                    <div class="Form-row">
+                        <input class="Button" type="submit" value="<?= t('server.common.submit') ?>" />
+                    </div>
                 </form>
             </div>
         </div>
@@ -46,26 +61,16 @@ if (!empty($_GET['action']) && $_GET['action'] == 'revert') { // if we're revert
         die();
     }
 } else { // with edit, the variables are passed with POST
-    $Body = $_POST['body'];
-    $Image = $_POST['image'];
-    $IMDBID = $_POST['imdbid'];
-    $DoubanID = $_POST['doubanid'] ? $_POST['doubanid'] : 'null';
-    $RTTitle = $_POST['rttitle'];
-    $ReleaseType = (int)$_POST['releasetype'];
-
-    if (($GroupInfo = $Cache->get_value('torrents_details_' . $GroupID))) {
-        $GroupCategoryID = $GroupInfo['CategoryID'];
-    } else {
-        $DB->query("
-			SELECT CategoryID
-			FROM torrents_group
-			WHERE ID = '$GroupID'");
-        list($GroupCategoryID) = $DB->next_record();
-    }
-    if ($GroupCategoryID == 1 && !isset($ReleaseTypes[$ReleaseType]) || $GroupCategoryID != 1 && $ReleaseType) {
-        error(403);
-    }
-
+    $Body = db_string(preg_replace("/\r|\n/", "", trim($_POST['body'])));
+    $MainBody = db_string(preg_replace("/\r|\n/", "", trim($_POST['mainbody'])));
+    $Image = db_string($_POST['image']);
+    $IMDBID = db_string($_POST['imdbid']);
+    $DoubanID = db_string($_POST['doubanid']);
+    $RTTitle = db_string($_POST['rttitle']);
+    $Year = db_string(intval($_POST['year']));
+    $ReleaseType = db_string((int)$_POST['releasetype']);
+    $Name = db_string($_POST['name']);
+    $SubName = db_string($_POST['subname']);
     // Trickery
     if (!preg_match("/^" . IMAGE_REGEX . "$/i", $Image)) {
         $Image = '';
@@ -76,56 +81,84 @@ if (!empty($_GET['action']) && $_GET['action'] == 'revert') { // if we're revert
 
 // Insert revision
 if (empty($RevisionID)) { // edit
-    $DB->query("
-		INSERT INTO wiki_torrents
-			(PageID, Body, Image, UserID, Summary, Time, IMDBID, DoubanID, RTTitle)
+    $DB->query(
+        "INSERT INTO wiki_torrents
+			(
+                PageID, 
+                Body, 
+                MainBody,
+                Image, 
+                UserID, 
+                Summary, 
+                Time, 
+                IMDBID, 
+                DoubanID, 
+                RTTitle, 
+                Year, 
+                Name, 
+                SubName,
+                ReleaseType)
 		VALUES
-			('$GroupID', '" . db_string($Body) . "', '" . db_string($Image) . "', '$UserID', '$Summary', '" . sqltime() . "', '" . db_string($IMDBID) . "', " . db_string($DoubanID) . ", '" . db_string($RTtitle) . "')");
-
-    $DB->query("
-		UPDATE torrents_group
-		SET ReleaseType = '$ReleaseType'
-		WHERE ID = '$GroupID'");
-    Torrents::update_hash($GroupID);
+			(
+                '$GroupID', 
+                '" . $Body . "', 
+                '" . $MainBody . "', 
+                '" . $Image . "', 
+                '$UserID', 
+                '$Summary', 
+                '" . sqltime() . "', 
+                '" . $IMDBID . "', 
+                '" . $DoubanID . "', 
+                '" . $RTTitle . "',
+                '$Year',
+                '" . $Name . "',
+                '" . $SubName . "',
+                '" . $ReleaseType . "'
+                )"
+    );
 } else { // revert
     $DB->query("
-		SELECT PageID, Body, Image, IMDBID, DoubanID, RTTitle
+		SELECT PageID, Body, MainBody, Image, IMDBID, DoubanID, RTTitle, Year, Name, SubName, ReleaseType
 		FROM wiki_torrents
 		WHERE RevisionID = '$RevisionID'");
-    list($PossibleGroupID, $Body, $Image, $IMDBID, $DoubanID, $RTTitle) = $DB->next_record();
+    list($PossibleGroupID, $Body, $MainBody, $Image, $IMDBID, $DoubanID, $RTTitle, $Year, $Name, $SubName, $ReleaseType) = $DB->next_record();
     if ($PossibleGroupID != $GroupID) {
         error(404);
     }
 
     $DB->query("
 		INSERT INTO wiki_torrents
-			(PageID, Body, Image, UserID, Summary, Time, IMDBID, DoubanID, RTTitle)
-		SELECT '$GroupID', Body, Image, '$UserID', 'Reverted to revision $RevisionID', '" . sqltime() . "', IMDBID, DoubanID, RTTitle
-		FROM wiki_artists
+			(PageID, Body, MainBody, Image, UserID, Summary, Time, IMDBID, DoubanID, RTTitle, Year, Name, SubName, ReleaseType)
+		SELECT '$GroupID', Body, MainBody, Image, '$UserID', 'Reverted to revision $RevisionID', '" . sqltime() . "', IMDBID, DoubanID, RTTitle, Year, Name, SubName, ReleaseType
+		FROM wiki_torrents
 		WHERE RevisionID = '$RevisionID'");
 }
 
 $RevisionID = $DB->inserted_id();
 
-$Body = db_string($Body);
-$Image = db_string($Image);
-
 // Update torrents table (technically, we don't need the RevisionID column, but we can use it for a join which is nice and fast)
-$DB->query("
-	UPDATE torrents_group
+// TODO by qwerty write group log
+$DB->query(
+    "UPDATE torrents_group
 	SET
 		RevisionID = '$RevisionID',
 		WikiBody = '$Body',
+        MainWikiBody = '$MainBody',
 		WikiImage = '$Image',
         IMDBID = '$IMDBID',
-        DoubanID = '$DoubanID',
-        RTTitle = '$RTTitle'
-	WHERE ID='$GroupID'");
-Torrents::update_movie_info($GroupID, $IMDBID, $DoubanID, false);
+        DoubanID = '" . (empty($DoubanID) ? 'null' : $DoubanID) . "',
+        RTTitle = '$RTTitle',
+		ReleaseType = '$ReleaseType',
+        Year = $Year,
+        Name = '$Name',
+        SubName = '$SubName'
+	WHERE ID='$GroupID'"
+);
+$trigger = new ActionTrigger;
+$trigger->triggerMovieEdit($GroupID);
+Torrents::update_movie_info($GroupID, $IMDBID, $DoubanID, true);
+Torrents::update_hash($GroupID);
 
-// There we go, all done!
-
-$Cache->delete_value('torrents_details_' . $GroupID);
 $DB->query("
 	SELECT CollageID
 	FROM collages_torrents
@@ -160,7 +193,6 @@ foreach ($UserIDs as $UserID) {
     }
 }
 
-// TODO by qwerty 年份，名字被变更时，也需要处理
 $DB->query("
 	SELECT ID
 	FROM torrents

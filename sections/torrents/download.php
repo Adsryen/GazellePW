@@ -55,7 +55,7 @@ if (Misc::in_array_partial($_SERVER['HTTP_USER_AGENT'], $ScriptUAs)) {
 			AND TorrentID = $TorrentID
 		LIMIT 4");
     if ($DB->record_count() === 4) {
-        error(Lang::get('torrents.error_downloaded_to_many_times'), true);
+        error(t('server.torrents.error_downloaded_to_many_times'), true);
         die();
     }
 }
@@ -101,16 +101,16 @@ $Artists = $Info['Artists'];
 
 // If he's trying use a token on this, we need to make sure he has one,
 // deduct it, add this to the FLs table, and update his cache key.
-if ($_REQUEST['usetoken'] && in_array($FreeTorrent, ['0', '11', '12', '13']) && !Torrents::global_freeleech()) {
+if ($_REQUEST['usetoken'] && in_array($FreeTorrent, [Torrents::Normal, Torrents::OneFourthOff, Torrents::TwoFourthOff, Torrents::ThreeFourthOff]) && !Torrents::global_freeleech()) {
     if (isset($LoggedUser)) {
         $FLTokens = $LoggedUser['FLTokens'];
         if ($LoggedUser['CanLeech'] != '1') {
-            error(Lang::get('torrents.error_leech_disabled'));
+            error(t('server.torrents.error_leech_disabled'));
         }
     } else {
         $UInfo = Users::user_heavy_info($UserID);
         if ($UInfo['CanLeech'] != '1') {
-            error(Lang::get('torrents.error_leech_disabled_may'));
+            error(t('server.torrents.error_leech_disabled_may'));
         }
         $FLTokens = $UInfo['FLTokens'];
     }
@@ -118,83 +118,57 @@ if ($_REQUEST['usetoken'] && in_array($FreeTorrent, ['0', '11', '12', '13']) && 
     // First make sure this isn't already FL, and if it is, do nothing
 
     if (!Torrents::has_token($TorrentID)) {
-        $TokenUses = ceil($Size / (5 * 1024 * 1024 * 1024));
-        if ($FLTokens < $TokenUses) {
-            error(Lang::get('torrents.error_tokens_not_enough'));
+        $TokenUses = 1;
+        if ($FLTokens < 1) {
+            error(t('server.torrents.error_tokens_not_enough'));
         }
-        /*
-        if ($Size >= 2147483648) {
-            error('This torrent is too large. Please use the regular DL link.');
-        }
-        */
         // Let the tracker know about this
         if (!Tracker::update_tracker('add_token', array('info_hash' => rawurlencode($InfoHash), 'userid' => $UserID))) {
-            error(Lang::get('torrents.error_occurred_to_token'));
+            error(t('server.torrents.error_occurred_to_token'));
         }
-
-        if (!Torrents::has_token($TorrentID)) {
-            $DB->query("
-				INSERT INTO users_freeleeches (UserID, TorrentID, Time)
-				VALUES ($UserID, $TorrentID, NOW())
+        G::$DB->begin_transaction();
+        try {
+            G::$DB->prepared_query("SELECT FLTokens FROM users_main where ID = $UserID");
+            $TokenCount = G::$DB->collect('FLTokens');
+            if ($TokenCount[0] < $TokenUses) {
+                G::$DB->rollback();
+                error(Lang::get('torrents', 'error_tokens_not_enough'));
+            };
+            G::$DB->prepared_query("
+				INSERT INTO users_freeleeches (UserID, TorrentID, Time, Uses)
+				VALUES ($UserID, $TorrentID, NOW(), $TokenUses)
 				ON DUPLICATE KEY UPDATE
 					Time = VALUES(Time),
 					Expired = FALSE,
 					Uses = Uses + $TokenUses");
-            $DB->query("
+            G::$DB->prepared_query("
 				INSERT INTO users_freeleeches_time (UserID, TorrentID, Time)
 				VALUES ($UserID, $TorrentID, NOW())");
-            $DB->query("
+            G::$DB->prepared_query("
 				UPDATE users_main
 				SET FLTokens = FLTokens - $TokenUses
 				WHERE ID = $UserID");
-            for ($i = 0; $i < $TokenUses; $i++) {
-                $DB->query(
-                    "select ID from (SELECT ID FROM `tokens_typed` WHERE UserID='$UserID' and Type='time' ORDER BY `EndTime`) a
-					union all
-					select ID from (select ID FROM `tokens_typed` WHERE UserID='$UserID' and Type='count') b 
-					limit 1"
-                );
-                $UsedTokenID = $DB->collect('ID');
-                if (count($UsedTokenID) > 0) {
-                    $DB->query("delete from `tokens_typed` WHERE ID = '$UsedTokenID[0]'");
-                } else {
-                    break;
-                }
-            }
-            // Fix for downloadthemall messing with the cached token count
-            $UInfo = Users::user_heavy_info($UserID);
-            $FLTokens = $UInfo['FLTokens'];
-            $TimedTokens = $UInfo['TimedTokens'];
-            $Cache->begin_transaction("user_info_heavy_$UserID");
-            $Cache->update_row(false, array('FLTokens' => ($FLTokens - $TokenUses), 'TimedTokens' => ($TimedTokens >= $TokenUses ? $TimedTokens - $TokenUses : 0)));
-            $Cache->commit_transaction(0);
-
-            $Cache->delete_value("users_tokens_$UserID");
+            G::$DB->prepared_query("DELETE FROM tokens_typed WHERE ID in (SELECT tmp.ID FROM (SELECT ID FROM tokens_typed WHERE UserID = $UserID order by EndTime limit $TokenUses) tmp)");
+        } catch (Exception $e) {
+            error_log($e);
+            G::$DB->rollback();
         }
+        G::$DB->commit();
+        // Fix for downloadthemall messing with the cached token count
+        $UInfo = Users::user_heavy_info($UserID);
+        $FLTokens = $UInfo['FLTokens'];
+        $TimedTokens = $UInfo['TimedTokens'];
+        $Cache->begin_transaction("user_info_heavy_$UserID");
+        $Cache->update_row(false, array('FLTokens' => ($FLTokens - $TokenUses), 'TimedTokens' => ($TimedTokens >= $TokenUses ? $TimedTokens - $TokenUses : 0)));
+        $Cache->commit_transaction(0);
+
+        $Cache->delete_value("users_tokens_$UserID");
     }
 }
 
 //Stupid Recent Snatches On User Page
 if ($CategoryID == '1' && $Image != '' && $TorrentUploaderID != $UserID) {
-    $RecentSnatches = $Cache->get_value("recent_snatches_$UserID");
-    if (!empty($RecentSnatches)) {
-        $Snatch = array(
-            'ID' => $GroupID,
-            'Name' => $Name,
-            'SubName' => $SubName,
-            'Year' => $Year,
-            'WikiImage' => $Image
-        );
-        if (!in_array($Snatch, $RecentSnatches)) {
-            if (count($RecentSnatches) === 5) {
-                array_pop($RecentSnatches);
-            }
-            array_unshift($RecentSnatches, $Snatch);
-        } elseif (!is_array($RecentSnatches)) {
-            $RecentSnatches = array($Snatch);
-        }
-        $Cache->cache_value("recent_snatches_$UserID", $RecentSnatches, 0);
-    }
+    $RecentSnatches = $Cache->delete_value("recent_snatches_$UserID");
 }
 
 $DB->query("

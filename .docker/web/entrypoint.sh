@@ -6,14 +6,14 @@ run_service()
 }
 
 # We'll need these anyway so why not kill some time while waiting on MySQL to be ready
-su -c 'echo -e "====== Composer Install ======"; \
+su -c 'echo "====== Composer Install ======"; \
     composer --version; \
     composer install; \
-    echo -e "\n====== Yarn Install ======"; \
-    yarn; \
-    echo -e "\n====== Yarn Start ======"; \
-    yarn start & \
 ' gazelle
+echo -e "\n====== Yarn Install ======"
+yarn
+echo -e "\n====== Yarn Start ======"
+yarn start &
 
 # Wait for MySQL...
 counter=1
@@ -32,22 +32,25 @@ if ! FKEY_MY_DATABASE=1 LOCK_MY_DATABASE=1 /var/www/vendor/bin/phinx migrate; th
     exit 1
 fi
 
-if [ ! -f /etc/php/7.3/cli/conf.d/99-boris.ini ]; then
+if [ ! -f /etc/php/7.4/cli/conf.d/99-boris.ini ]; then
     echo "Initialize Boris..."
-    grep '^disable_functions' /etc/php/7.3/cli/php.ini \
+    grep '^disable_functions' /etc/php/7.4/cli/php.ini \
         | sed -r 's/pcntl_(fork|signal|signal_dispatch|waitpid),//g' \
-        > /etc/php/7.3/cli/conf.d/99-boris.ini
+        > /etc/php/7.4/cli/conf.d/99-boris.ini
 fi
 
 echo "Start services..."
 
-touch /var/log/fpm-php.www.log
-chmod 777 /var/log/fpm-php.www.log
+mkdir -p /var/www/logs
+mkdir -p /var/www/.cache
+chmod 777 /var/www/.cache
+chown gazelle:gazelle  /var/www/.cache
+truncate -s0  /var/www/logs/*.log
 
 run_service cron
 run_service nginx
-run_service php7.3-fpm
+run_service php7.4-fpm
 
 crontab /var/www/.docker/web/crontab
 
-tail -f /var/log/nginx/access.log
+tail -f /var/www/logs/*.log

@@ -29,20 +29,23 @@ Post-headerMultipleRows
   display: flex;
   flex-direction: column;
   padding: 0;
+  gap: var(--global-space-lg);
 }
 
 .Post {
   line-height: 1.5em;
 }
 .Post:not(:last-child) {
-  border-bottom: var(--Box-border);
+  /* border-bottom: var(--Box-border);*/
 }
 
 .Post-header {
   display: flex;
   gap: var(--global-space-default);
-  padding: var(--global-space-default);
+  padding-top: var(--global-space-default);
+  padding-bottom: var(--global-space-default);
   flex-wrap: wrap;
+  border-bottom: var(--Box-border);
 }
 @media (min-width: 768px) {
   .Post-header {
@@ -51,7 +54,7 @@ Post-headerMultipleRows
 }
 
 .Post-headerTitle {
-  font-size: var(--global-fontSize-lg);
+  font-size: 1.3rem;
   font-weight: bold;
   display: inline;
 }
@@ -70,8 +73,8 @@ Post-headerMultipleRows
 }
 
 .Post-body {
-  border-top: var(--Box-border);
-  padding: var(--global-space-lg);
+  padding-top: var(--global-space-default);
+  padding-bottom: var(--global-space-default);
 }
 
 .Post-bodyActions {
@@ -88,4 +91,10 @@ Post-headerMultipleRows
 
 .preview_submit {
   text-align: center;
+}
+
+.PostList-actions {
+  font-style: italic;
+  padding: var(--global-space-default);
+  border-top: 1px dashed var(--global-color-border);
 }

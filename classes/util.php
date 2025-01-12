@@ -66,7 +66,6 @@ function is_bool_value($Value) {
 
 /**
  * HTML-escape a string for output.
- * This is preferable to htmlspecialchars because it doesn't screw up upon a double escape.
  *
  * @param string $Str
  * @return string escaped string.
@@ -75,30 +74,7 @@ function display_str($Str) {
     if ($Str === null || $Str === false || is_array($Str)) {
         return '';
     }
-    if ($Str != '' && !is_number($Str)) {
-        $Str = Format::make_utf8($Str);
-        $Str = mb_convert_encoding($Str, 'HTML-ENTITIES', 'UTF-8');
-        $Str = preg_replace("/&(?![A-Za-z]{0,4}\w{2,3};|#[0-9]{2,6};)/m", '&amp;', $Str);
-
-        $Replace = array(
-            "'", '"', "<", ">",
-            '&#128;', '&#130;', '&#131;', '&#132;', '&#133;', '&#134;', '&#135;', '&#136;',
-            '&#137;', '&#138;', '&#139;', '&#140;', '&#142;', '&#145;', '&#146;', '&#147;',
-            '&#148;', '&#149;', '&#150;', '&#151;', '&#152;', '&#153;', '&#154;', '&#155;',
-            '&#156;', '&#158;', '&#159;'
-        );
-
-        $With = array(
-            '&#39;', '&quot;', '&lt;', '&gt;',
-            '&#8364;', '&#8218;', '&#402;', '&#8222;', '&#8230;', '&#8224;', '&#8225;', '&#710;',
-            '&#8240;', '&#352;', '&#8249;', '&#338;', '&#381;', '&#8216;', '&#8217;', '&#8220;',
-            '&#8221;', '&#8226;', '&#8211;', '&#8212;', '&#732;', '&#8482;', '&#353;', '&#8250;',
-            '&#339;', '&#382;', '&#376;'
-        );
-
-        $Str = str_replace($Replace, $With, $Str);
-    }
-    return $Str;
+    return htmlspecialchars($Str, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8',  false);
 }
 
 
@@ -170,8 +146,8 @@ function ajax_json_error_with_code($Code, $Message = "") {
     die();
 }
 
-function json_error($Code) {
-    echo json_encode(add_json_info(['status' => 'failure', 'error' => $Code, 'response' => []]));
+function json_error($Message) {
+    echo json_encode(add_json_info(['status' => 'failure', 'erro' => $Message, 'response' => []]));
     die();
 }
 
@@ -184,7 +160,7 @@ function add_json_info($Json) {
             ],
         ]);
     }
-    if (!isset($Json['debug']) && check_perms('site_debug')) {
+    if (!isset($Json['debug']) && G::$LoggedUser && check_perms('site_debug')) {
         /** @var DEBUG $Debug */
         global $Debug;
         $Json = array_merge($Json, [
@@ -220,11 +196,11 @@ function FL_confirmation_msg($seeders, $Size) {
     /* Coder Beware: this text is emitted as part of a Javascript single quoted string.
      * Any apostrophes should be avoided or escaped appropriately (with \\').
      */
-    $TokenUses = ceil($Size / (5 * 1024 * 1024 * 1024));
-    $FTStr = "$TokenUses" . Lang::get('global.n_fl_token') . ($TokenUses > 1 ? Lang::get('global.s') : "");
+    $TokenUses = 1;
+    $FTStr = t('server.common.n_fl_token', ['Count' => $TokenUses, 'Values' => [$TokenUses]]);
     return ($seeders == 0)
-        ? Lang::get('global.not_seeded_sure_use_fl_before') . "$FTStr" . Lang::get('global.not_seeded_sure_use_fl_after')
-        : Lang::get('global.sure_use_fl_before') . "$FTStr" . Lang::get('global.sure_use_fl_after');
+        ? t('server.common.not_seeded_sure_use_fl', ['Values' => [$FTStr]])
+        : t('server.common.sure_use_fl', ['Values' => [$FTStr]]);
 }
 
 /**
@@ -296,6 +272,20 @@ function open_registration($Email = null) {
         return true;
     }
     return false;
+}
+
+function is_limit_email_registration() {
+    if (CONFIG['OPEN_REGISTRATION']) {
+        return false;
+    }
+    if (!isset(CONFIG['OPEN_REGISTRATION_TO']) || !isset(CONFIG['OPEN_REGISTRATION_FROM'])) {
+        return true;
+    }
+    $t = time();
+    if ($t >= strtotime(CONFIG['OPEN_REGISTRATION_FROM']) && $t < strtotime(CONFIG['OPEN_REGISTRATION_TO'])) {
+        return false;
+    }
+    return true;
 }
 
 function icon($name, $class = '', $Option = []) {
@@ -377,4 +367,11 @@ function get_by_path($Object, $Path, $DefaultValue = null) {
         $Value = $Value[$Key];
     }
     return $Value;
+}
+
+function add_day($date, $day) {
+    $timestamp = strtotime($date);
+    $timestamp = strtotime("+$day days", $timestamp);
+    $newDate = date('Y-m-d', $timestamp);
+    return $newDate;
 }

@@ -9,6 +9,8 @@ if (isset($LoggedUser)) {
 }
 */
 
+use Gazelle\Manager\ActionTrigger;
+
 include(CONFIG['SERVER_ROOT'] . '/classes/validate.class.php');
 $Val = new VALIDATE;
 
@@ -28,6 +30,7 @@ if (!empty($_REQUEST['confirm'])) {
 			WHERE ID = '$UserID'");
         $Cache->increment('stats_user_count');
         include('step2.php');
+        die();
     }
 
     // Confirm registration
@@ -43,14 +46,14 @@ if (!empty($_REQUEST['confirm'])) {
         $Cache->delete_value("user_info_$UserID");
     }
 } elseif (open_registration($_REQUEST['email']) || !empty($_REQUEST['invite'])) {
-    $Val->SetFields('username', true, 'regex', Lang::get('register.you_did_not_enter_a_valid_username'), array('regex' => USERNAME_REGEX));
-    $Val->SetFields('email', true, 'email', Lang::get('register.you_did_not_enter_a_valid_email_address'));
-    $Val->SetFields('password', true, 'regex', Lang::get('register.a_strong_password_is_8_characters_or_longer'), array('regex' => '/(?=^.{8,}$)(?=.*[^a-zA-Z])(?=.*[A-Z])(?=.*[a-z]).*$|.{20,}/'));
-    $Val->SetFields('confirm_password', true, 'compare', Lang::get('register.your_passwords_do_not_match'), array('comparefield' => 'password'));
-    $Val->SetFields('readrules', true, 'checkbox', Lang::get('register.you_did_not_select_rules'));
-    $Val->SetFields('readwiki', true, 'checkbox', Lang::get('register.you_did_not_select_wiki'));
-    $Val->SetFields('agereq', true, 'checkbox', Lang::get('register.you_did_not_select_age'));
-    //$Val->SetFields('captcha', true, 'string', Lang::get('register.you_did_not_enter_a_captcha_code'), array('minlength' => 6, 'maxlength' => 6));
+    $Val->SetFields('username', true, 'regex', t('server.register.you_did_not_enter_a_valid_username'), array('regex' => USERNAME_REGEX));
+    $Val->SetFields('email', true, 'email', t('server.register.you_did_not_enter_a_valid_email_address'));
+    $Val->SetFields('password', true, 'regex', t('server.register.a_strong_password_is_8_characters_or_longer'), array('regex' => '/(?=^.{8,}$)(?=.*[^a-zA-Z])(?=.*[A-Z])(?=.*[a-z]).*$|.{20,}/'));
+    $Val->SetFields('confirm_password', true, 'compare', t('server.register.your_passwords_do_not_match'), array('comparefield' => 'password'));
+    $Val->SetFields('readrules', true, 'checkbox', t('server.register.you_did_not_select_rules'));
+    $Val->SetFields('readwiki', true, 'checkbox', t('server.register.you_did_not_select_wiki'));
+    $Val->SetFields('agereq', true, 'checkbox', t('server.register.you_did_not_select_age'));
+    //$Val->SetFields('captcha', true, 'string', t('server.register.you_did_not_enter_a_captcha_code'), array('minlength' => 6, 'maxlength' => 6));
 
     if (!empty($_POST['submit'])) {
         // User has submitted registration form
@@ -66,12 +69,12 @@ if (!empty($_REQUEST['confirm'])) {
             if (open_registration()) {
                 $NewValue = $Cache->increment(LIMIT_REGISTER_VERSION);
                 if (LIMIT_REGISTER_COUNT < $NewValue) {
-                    $Err = Lang::get('register.register_closed');
+                    $Err = t('server.register.register_closed');
                 }
             } else if (!empty($_REQUEST['invite'])) {
                 $NewValue = $Cache->increment(LIMIT_REGISTER_VERSION);
                 if (LIMIT_REGISTER_COUNT < $NewValue) {
-                    $Err = Lang::get('register.register_closed');
+                    $Err = t('server.register.register_closed');
                 }
             }
         }
@@ -79,11 +82,11 @@ if (!empty($_REQUEST['confirm'])) {
             $NotAllowedEmails = CONFIG['NOT_ALLOWED_REGISTRATION_EMAIL'];
             $EmailBox = explode('@', $_REQUEST['email']);
             if (in_array($EmailBox[1], $NotAllowedEmails)) {
-                $Err = Lang::get('pub.not_allowed_email');
+                $Err = t('server.pub.not_allowed_email');
             }
             // Don't allow a username of "0" or "1" due to PHP's type juggling
             if (trim($_POST['username']) == '0' || trim($_POST['username']) == '1') {
-                $Err = Lang::get('register.you_cannot_have_a_username_of_0_or_1');
+                $Err = t('server.register.you_cannot_have_a_username_of_0_or_1');
             }
 
 
@@ -95,7 +98,7 @@ if (!empty($_REQUEST['confirm'])) {
             list($UserCount) = $DB->next_record();
 
             if ($UserCount) {
-                $Err = Lang::get('register.someone_registered_with_that_username');
+                $Err = t('server.register.someone_registered_with_that_username');
                 $_REQUEST['username'] = '';
             }
             $DB->query("
@@ -104,24 +107,22 @@ if (!empty($_REQUEST['confirm'])) {
                 WHERE Email = '" . db_string(trim($_POST['email'])) . "'");
             list($UserCount) = $DB->next_record();
             if ($UserCount) {
-                $Err = Lang::get('register.someone_registered_with_that_email');
+                $Err = t('server.register.someone_registered_with_that_email');
                 $_REQUEST['email'] = '';
-            }
-
-            if ($_REQUEST['invite']) {
+            } else if ($_REQUEST['invite']) {
                 $DB->query("
 					SELECT InviterID, Email, Reason, InviteID
 					FROM invites
 					WHERE InviteKey = '" . db_string($_REQUEST['invite']) . "'");
                 if (!$DB->has_results()) {
-                    $Err = Lang::get('register.invite_does_not_exist');
+                    $Err = t('server.register.invite_does_not_exist');
                     $InviterID = 0;
                 } else {
                     list($InviterID, $InviteEmail, $InviteReason, $InviteID) = $DB->next_record(MYSQLI_NUM, false);
                 }
                 if ($_REQUEST['email'] != $InviteEmail) {
                     error_log("Mismatch invite email, request email: " . $_REQUEST['email'] . " invite email: " . $InviteEmail);
-                    $Err = Lang::get('register.invite_email_mismatch');
+                    $Err = t('server.register.invite_email_mismatch');
                 }
             } else {
                 $InviterID = 0;
@@ -178,8 +179,12 @@ if (!empty($_REQUEST['confirm'])) {
             list($StyleID) = $DB->next_record();
             $AuthKey = Users::make_secret();
 
-            if ($InviteReason !== '') {
-                $InviteReason = db_string(sqltime() . " - $InviteReason");
+
+            if ($InviteReason != "") {
+                $InviterUserInfo = Users::user_info($InviterID);
+                $InviterUserName = $InviterUserInfo['Username'];
+                $InviteReason = ", Reason: $InviteReason";
+                $InviteReason = db_string(sqltime() . " - Invited by $InviterUserName$InviteReason");
             }
             $DB->query("
 				INSERT INTO users_info
@@ -216,7 +221,7 @@ if (!empty($_REQUEST['confirm'])) {
 
             // Manage invite trees, delete invite
 
-            if ($InviterID !== null) {
+            if (!empty($InviterID)) {
                 $DB->query("
 					SELECT TreePosition, TreeID, TreeLevel
 					FROM invite_tree
@@ -274,6 +279,8 @@ if (!empty($_REQUEST['confirm'])) {
 						VALUES
 							('$UserID', '$InviterID', '$TreePosition', '$TreeID', '$TreeLevel')");
                 }
+                $trigger = new ActionTrigger;
+                $trigger->triggerInviteeRegister($InviterID, $UserID);
             } else { // No inviter (open registration)
                 $DB->query("
 					SELECT MAX(TreeID)
@@ -283,27 +290,34 @@ if (!empty($_REQUEST['confirm'])) {
                 $InviterID = 0;
                 $TreePosition = 1;
                 $TreeLevel = 1;
+                // Create invite tree record
+                $DB->query("
+						INSERT INTO invite_tree
+							(UserID, InviterID, TreePosition, TreeID, TreeLevel)
+						VALUES
+							('$UserID', '$InviterID', '$TreePosition', '$TreeID', '$TreeLevel')");
             }
 
-            include(CONFIG['SERVER_ROOT'] . '/classes/templates.class.php');
-            $TPL = new TEMPLATE;
-            include(CONFIG['SERVER_ROOT'] . "/sections/login/close.php");
-            if ($CloseLogin) {
+            if (CONFIG['CLOSE_LOGIN']) {
                 $LoginKey = Users::make_secret();
                 $DB->query("insert into login_link (LoginKey, UserID, Username) values ('" . db_string($LoginKey) . "', '$UserID', '" . db_string(trim($_POST['username'])) . "')");
-                $TPL->open(CONFIG['SERVER_ROOT'] . '/templates/new_registration_close_login.tpl');
-                $TPL->set('LoginKey', $LoginKey);
-                $TPL->set('TorrentKeyRight', substr($torrent_pass, -8));
-                $TPL->set('Username', $_REQUEST['username']);
+                Misc::send_email_with_tpl($_REQUEST['email'], 'new_registration_close_login', [
+                    'LoginKey' => $LoginKey,
+                    'TorrentKeyRight' => substr($torrent_pass, -8),
+                    'Username' => $_REQUEST['username'],
+                    'TorrentKey' => $torrent_pass,
+                    'SITE_NAME' => CONFIG['SITE_NAME'],
+                    'SITE_URL' => CONFIG['SITE_URL'],
+                ], 'text/html');
             } else {
-                $TPL->open(CONFIG['SERVER_ROOT'] . '/templates/new_registration.tpl');
+                Misc::send_email_with_tpl($_REQUEST['email'], 'new_registration', [
+                    'Username' => $_REQUEST['username'],
+                    'TorrentKey' => $torrent_pass,
+                    'SITE_NAME' => CONFIG['SITE_NAME'],
+                    'SITE_URL' => CONFIG['SITE_URL'],
+                ], 'text/html');
             }
-            $TPL->set('Username', $_REQUEST['username']);
-            $TPL->set('TorrentKey', $torrent_pass);
-            $TPL->set('SITE_NAME', CONFIG['SITE_NAME']);
-            $TPL->set('SITE_URL', CONFIG['SITE_URL']);
 
-            Misc::send_email($_REQUEST['email'], '激活你的 ' . CONFIG['SITE_NAME'] . ' 账号 | New account confirmation at ' . CONFIG['SITE_NAME'], $TPL->get(), 'noreply', 'text/html');
             Tracker::update_tracker('add_user', array('id' => $UserID, 'passkey' => $torrent_pass));
             $Sent = 1;
         }

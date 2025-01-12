@@ -9,7 +9,6 @@
     -Unify all the code standards and file names (tool_list.php,tool_add.php,tool_alter.php)
 
  *****************************************************************/
-
 if (isset($argv[1])) {
     $_REQUEST['action'] = $argv[1];
 } else {
@@ -78,22 +77,6 @@ switch ($_REQUEST['action']) {
         include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/forum_alter.php');
         break;
 
-    case 'apply_list':
-        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/apply_list.php');
-        break;
-
-    case 'apply_alter':
-        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/apply_alter.php');
-        break;
-
-    case 'award':
-        if (check_perms('staff_award')) {
-            include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/award.php');
-        } else {
-            error(403);
-        }
-        break;
-
     case 'whitelist':
         include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/whitelist_list.php');
         break;
@@ -106,7 +89,7 @@ switch ($_REQUEST['action']) {
         include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/enable_requests.php');
         break;
     case 'ajax_take_enable_request':
-        if (FEATURE_EMAIL_REENABLE) {
+        if (CONFIG['FEATURE_EMAIL_REENABLE']) {
             include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/ajax_take_enable_request.php');
         } else {
             // Prevent post requests to the ajax page
@@ -210,21 +193,9 @@ switch ($_REQUEST['action']) {
         $Cache->delete_value('news_latest_title');
         $Cache->delete_value('news');
 
-
-
         NotificationsManager::send_push(NotificationsManager::get_push_enabled_users(), $_POST['title'], $_POST['body'], site_url() . 'index.php', NotificationsManager::NEWS);
 
         header('Location: index.php');
-        break;
-
-    case 'bonus_points':
-        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/bonus_points.php');
-        break;
-    case 'tokens':
-        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/tokens.php');
-        break;
-    case 'invite':
-        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/invite.php');
         break;
     case 'multiple_freeleech':
         include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/multiple_freeleech.php');
@@ -235,14 +206,11 @@ switch ($_REQUEST['action']) {
     case 'ocelot_info':
         include(CONFIG['SERVER_ROOT'] . '/sections/tools/data/ocelot_info.php');
         break;
-    case 'official_tags':
-        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/official_tags.php');
+    case 'manage_tags':
+        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/manage_tags.php');
         break;
     case 'edit_tags':
         include(CONFIG['SERVER_ROOT'] . '/sections/tools/misc/tags.php');
-        break;
-    case 'tag_aliases':
-        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/tag_aliases.php');
         break;
     case 'change_log':
         include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/change_log.php');
@@ -266,9 +234,10 @@ switch ($_REQUEST['action']) {
 
             if (is_numeric($_REQUEST['id'])) {
                 $DB->prepared_query("
-					SELECT p.ID, p.Name, p.Level, p.Secondary, p.PermittedForums, p.Values, p.DisplayStaff, p.StaffGroup, COUNT(u.ID)
+					SELECT p.ID, p.Name, p.Level, p.Secondary, p.PermittedForums, p.Values, p.DisplayStaff, p.StaffGroup, COUNT(u.ID) + COUNT(DISTINCT l.UserID)
 					FROM permissions AS p
 						LEFT JOIN users_main AS u ON u.PermissionID = p.ID
+                        LEFT JOIN users_levels AS l ON l.PermissionID = p.ID
 					WHERE p.ID = ?
 					GROUP BY p.ID", $_REQUEST['id']);
                 list($ID, $Name, $Level, $Secondary, $Forums, $Values, $DisplayStaff, $StaffGroup, $UserCount) = $DB->next_record(MYSQLI_NUM, array(5));
@@ -543,13 +512,16 @@ switch ($_REQUEST['action']) {
         include(CONFIG['SERVER_ROOT'] . '/sections/tools/sandboxes/bbcode_sandbox.php');
         break;
     case 'calendar':
-        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/calendar.php');
+        // include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/calendar.php');
+        error(403);
         break;
     case 'get_calendar_event':
-        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/ajax_get_calendar_event.php');
+        // include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/ajax_get_calendar_event.php');
+        error(403);
         break;
     case 'take_calendar_event':
-        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/ajax_take_calendar_event.php');
+        // include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/ajax_take_calendar_event.php');
+        error(403);
         break;
     case 'stylesheets':
         include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/stylesheets_list.php');
@@ -560,8 +532,8 @@ switch ($_REQUEST['action']) {
     case 'take_mass_pm':
         include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/take_mass_pm.php');
         break;
-    case 'monthalbum':
-        include(CONFIG['SERVER_ROOT'] . '/sections/tools/misc/album_of_month.php');
+    case 'featuremovie':
+        include(CONFIG['SERVER_ROOT'] . '/sections/tools/misc/feature_movie.php');
         break;
     case 'badges':
         if (!check_perms('admin_manage_badges') || !CONFIG['ENABLE_BADGE']) error(403);
@@ -589,6 +561,15 @@ switch ($_REQUEST['action']) {
     case 'events_reward_history':
         if (!check_perms('events_reward_history')) error(403);
         include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/events_reward_history.php');
+        break;
+    case 'navigation':
+        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/navigation_list.php');
+        break;
+    case 'navigation_alter':
+        include(CONFIG['SERVER_ROOT'] . '/sections/tools/managers/navigation_alter.php');
+        break;
+    case 'donation_log':
+        include(CONFIG['SERVER_ROOT'] . '/sections/tools/finances/donation_log.php');
         break;
     default:
         include(CONFIG['SERVER_ROOT'] . '/sections/tools/browse.php');

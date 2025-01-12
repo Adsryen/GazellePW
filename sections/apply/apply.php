@@ -10,30 +10,30 @@ if (isset($_POST['auth'])) {
             header('Location: /apply.php?action=view&id=' . $Applicant->id());
             exit;
         } else {
-            $Error = Lang::get('apply.you_need_explain_more');
+            $Error = t('server.apply.you_need_explain_more');
         }
     } else {
-        $Error = Lang::get('apply.you_need_choose_role');
+        $Error = t('server.apply.you_need_choose_role');
     }
 } else {
     $Role = '';
     $Body = '';
 }
-View::show_header(Lang::get('apply.apply'), 'apply,bbcode', 'PageApplyApply');
+View::show_header(t('server.apply.apply'), 'apply,bbcode', 'PageApplyApply');
 ?>
 
 <div class="LayoutBody">
     <div class="BodyHeader">
-        <h2 class="BodyHeader-nav"><?= Lang::get('apply.apply_for_a_role_at_before') ?><?= CONFIG['SITE_NAME'] ?><?= Lang::get('apply.apply_for_a_role_at_after') ?></h2>
+        <h2 class="BodyHeader-nav"><?= t('server.apply.apply') ?></h2>
         <? if (check_perms('admin_manage_applicants') || Applicant::user_is_applicant($LoggedUser['ID'])) { ?>
             <div class="BodyNavLinks">
                 <? if (check_perms('admin_manage_applicants')) { ?>
-                    <a href="/apply.php?action=view" class="brackets"><?= Lang::get('apply.current_applications') ?></a>
-                    <a href="/apply.php?action=view&status=resolved" class="brackets"><?= Lang::get('apply.resolved_applications') ?></a>
-                    <a href="/apply.php?action=admin" class="brackets"><?= Lang::get('apply.manage_roles') ?></a>
+                    <a href="/apply.php?action=view" class="brackets"><?= t('server.apply.current_applications') ?></a>
+                    <a href="/apply.php?action=view&status=resolved" class="brackets"><?= t('server.apply.resolved_applications') ?></a>
+                    <a href="/apply.php?action=admin" class="brackets"><?= t('server.apply.manage_roles') ?></a>
                 <? }
                 if (Applicant::user_is_applicant($LoggedUser['ID'])) { ?>
-                    <a href="/apply.php?action=view" class="brackets"><?= Lang::get('apply.view_your_application') ?></a>
+                    <a href="/apply.php?action=view" class="brackets"><?= t('server.apply.view_your_application') ?></a>
                 <? } ?>
             </div>
         <? } ?>
@@ -41,32 +41,24 @@ View::show_header(Lang::get('apply.apply'), 'apply,bbcode', 'PageApplyApply');
     <?
     $Roles = ApplicantRole::get_list();
     if (count($Roles)) { ?>
-        <div class="Box ">
-            <div class="Box-header"><?= Lang::get('apply.open_roles') ?></div>
-            <div class="Box-body HtmlText">
-                <ul>
-                    <li><?= Lang::get('apply.referral_note') ?></li>
-                </ul>
-                <div class="box" id="role_box">
-                    <div class="head"></div>
-                    <div class="pad TableContainer">
-                        <table id="current_applications_table">
-                            <? foreach ($Roles as $title => $info) { ?>
-                                <tr>
-                                    <td>
-                                        <div class="role_container">
-                                            <h2 class="head"><?= $title ?></h2>
-                                            <div class="HtmlText PostArticle">
-                                                <?= Text::full_format($info['description']) ?>
-                                            </div>
-                                        </div>
-                                        </br>
-                                    </td>
-                                </tr>
-                            <?  } /* foreach */ ?>
-                        </table>
+        <div class="Group">
+            <div class="Group-header">
+                <div class="Group-headerTitle">
+                    <?= t('server.apply.open_roles') ?></div>
+            </div>
+            <div class="Group-body">
+                <? foreach ($Roles as $title => $info) { ?>
+                    <div class="Box">
+                        <div class="Box-header">
+                            <div class="head"><?= $title ?></div>
+                        </div>
+                        <div class="Box-body" role_container">
+                            <div class="HtmlText PostArticle">
+                                <?= Text::full_format($info['description']) ?>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                <?  } /* foreach */ ?>
             </div>
         </div>
     <? } ?>
@@ -74,7 +66,7 @@ View::show_header(Lang::get('apply.apply'), 'apply,bbcode', 'PageApplyApply');
     <? if (count($Roles) == 0) { ?>
         <div class="Box">
             <div class="Box-body">
-                <p><?= Lang::get('apply.thanks_for_your_interest_in_helping') ?></p>
+                <p><?= t('server.apply.thanks_for_your_interest_in_helping') ?></p>
             </div>
         </div>
         <?
@@ -86,24 +78,18 @@ View::show_header(Lang::get('apply.apply'), 'apply,bbcode', 'PageApplyApply');
         }
         ?>
         <form class="send_form" id="applicationform" name="apply" action="/apply.php?action=save" method="post">
-            <div class="box">
-                <div id="quickpost" class="Form-rowList" variant="header">
-                    <div class="Form-rowHeader"><?= Lang::get('apply.apply') ?></div>
-
-                    <? new TEXTAREA_PREVIEW('body', 'body', $Body, 95, 20, true, true, false, ['placeholder="' . Lang::get('apply.at_least_80_characters') . '"']) ?>
-                    <div class="Form-row">
-                        <div><?= Lang::get('apply.role') ?>:
-                            <select class="Input" name="role">
-                                <option class="Select-option" value="">---</option>
-                                <? foreach (array_keys($Roles) as $title) { ?>
-                                    <option class="Select-option" value="<?= $title ?>" <?= $Role == $title ? ' selected' : '' ?>><?= $title ?></option>
-                                <?  } ?>
-                            </select>
-                        </div>
-                        <div id="buttons" class="center">
-                            <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
-                            <input class="Button" type="submit" value="<?= Lang::get('global.submit') ?>" />
-                        </div>
+            <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
+            <div id="quickpost">
+                <? new TEXTAREA_PREVIEW('body', 'body', $Body, 95, 20, true, true, false, ['placeholder="' . t('server.apply.at_least_80_characters') . '"']) ?>
+                <div class="Form-row">
+                    <div><?= t('server.apply.role') ?>:
+                        <select class="Input" name="role">
+                            <option class="Select-option" value="">---</option>
+                            <? foreach (array_keys($Roles) as $title) { ?>
+                                <option class="Select-option" value="<?= $title ?>" <?= $Role == $title ? ' selected' : '' ?>><?= $title ?></option>
+                            <?  } ?>
+                        </select>
+                        <input class="Button" type="submit" value="<?= t('server.common.submit') ?>" />
                     </div>
                 </div>
             </div>

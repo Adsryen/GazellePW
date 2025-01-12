@@ -7,8 +7,6 @@ include(CONFIG['SERVER_ROOT'] . '/classes/file_checker.class.php');
 
 enforce_login();
 
-define('QUERY_EXCEPTION', true); // Shut up debugging
-
 $File = $_FILES['file_input']; // This is our torrent file
 $SubtitleName = $File['tmp_name'];
 $Name = $File['name'];
@@ -18,18 +16,18 @@ preg_match('/torrentid=(\d+)/', $_POST['torrent_pl_link'], $IDMatch);
 if ($IDMatch[1]) {
     $TorrentID = $IDMatch[1];
 } else {
-    $Err = Lang::get('subtitles.lack_of_torrent_permalink');
+    $Err = t('server.subtitles.lack_of_torrent_permalink');
 }
 if (empty($_POST['languages'])) {
-    $Err = Lang::get('subtitles.please_select_language');
+    $Err = t('server.subtitles.please_select_language');
 }
 $Source = $_POST['source'] ? $_POST['source'] : '';
 $Languages = implode(',', $_POST['languages']);
 $Size = filesize($SubtitleName);
 if (empty($SubtitleName) || !is_uploaded_file($SubtitleName) || !filesize($SubtitleName)) {
-    $Err = Lang::get('subtitles.please_choose_a_subtitle_file');
+    $Err = t('server.subtitles.please_choose_a_subtitle_file');
 } elseif (!in_array($SubtitleFormat, $AllowedFormat)) {
-    $Err = Lang::get('subtitles.please_upload_supported_subtitle_formats');
+    $Err = t('server.subtitles.please_upload_supported_subtitle_formats');
 }
 if ($Err) {
     include(CONFIG['SERVER_ROOT'] . '/sections/subtitles/upload.php');

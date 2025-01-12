@@ -3,7 +3,6 @@
 namespace Gazelle\Top10;
 
 class Torrent extends \Gazelle\Base {
-
     /** @var Array */
     private $formats;
 
@@ -54,12 +53,6 @@ class Torrent extends \Gazelle\Base {
         $innerQuery = '';
         $joinParameters = [];
 
-        if (!empty($getParameters['excluded_artists'])) {
-            [$clause, $artists] = $this->excludedArtistClause($getParameters['excluded_artists']);
-            $innerQuery .= $clause;
-            $joinParameters[] = $artists;
-            $filteredWhere[] = "ta.ArtistCount IS NULL";
-        }
 
         if (count($joinParameters)) {
             $joinParameters = $this->flatten($joinParameters);
@@ -131,29 +124,6 @@ class Torrent extends \Gazelle\Base {
                 return [];
                 break;
         }
-    }
-
-    private function excludedArtistClause($artistParameter) {
-        if (!empty($artistParameter)) {
-            $artists = preg_split('/\r\n|\r|\n/', trim($artistParameter));
-
-            $artistPrepare = function ($artist) {
-                return trim($artist);
-            };
-            $artists = array_map($artistPrepare, $artists);
-
-            $sql = "
-            LEFT JOIN (
-                SELECT COUNT(*) AS ArtistCount, ta.GroupID
-                FROM torrents_artists AS ta
-                INNER JOIN artists_alias AS aa ON (ta.AliasID = aa.AliasID)
-                WHERE ta.Importance != '2' AND aa.Name IN (" . placeholders($artists) . ")
-                GROUP BY ta.GroupID
-            ) AS ta ON (g.ID = ta.GroupID)";
-            return [$sql, $artists];
-        }
-
-        return ['', []];
     }
 
     private function formatWhere($formatParameters) {
@@ -279,7 +249,7 @@ class Torrent extends \Gazelle\Base {
                 $i,
                 $torrentID,
                 $titleString,
-                $group['TagList']
+                ''
             );
         }
     }
@@ -288,9 +258,8 @@ class Torrent extends \Gazelle\Base {
         SELECT
             t.ID,
             g.ID,
-            ((t.Size * tls.Snatched) + (t.Size * 0.5 * tls.Leechers)) AS Data
+            ((t.Size * t.Snatched) + (t.Size * 0.5 * t.Leechers)) AS Data
         FROM torrents AS t
-        INNER JOIN torrents_leech_stats tls ON (tls.TorrentID = t.ID)
         INNER JOIN torrents_group AS g ON (g.ID = t.GroupID)
         %s
         GROUP BY %s

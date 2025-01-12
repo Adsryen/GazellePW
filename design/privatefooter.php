@@ -3,7 +3,7 @@
 <footer class="LayoutPage-footer Footer">
     <? if (!empty($Options['disclaimer'])) { ?>
         <div id="disclaimer_container" class="thin" style="text-align: center; margin-bottom: 20px;">
-            <?= Lang::get('pub.note') ?>
+            <?= t('server.pub.note') ?>
         </div>
     <?
     }
@@ -39,7 +39,6 @@
 <? if (CONFIG['DEBUG_MODE'] || check_perms('site_debug')) { ?>
     <div class="LayoutPage-siteDebug">
         <?
-        $Debug->phpinfo_table();
         $Debug->perf_table();
         $Debug->flag_table();
         $Debug->error_table();
@@ -78,9 +77,15 @@ if (!empty($NotificationSpans)) {
 
 <script src="/deps/tooltipster.bundle.min.js"></script>
 <script src="/deps/tooltipster-discovery.min.js"></script>
+<script src="/deps/load-image.all.min.js"></script>
+<script src="/deps/jquery-fileupload/jquery.ui.widget.js"></script>
+<script src="/deps/jquery-fileupload/jquery.fileupload.js"></script>
+<script src="/deps/jquery-fileupload/jquery.fileupload-process.js"></script>
+<script src="/deps/jquery-fileupload/jquery.fileupload-validate.js"></script>
+<script src="/deps/jquery-fileupload/jquery.fileupload-image.js"></script>
 
 <script type="module" src="<?= vite("src/js/globalapp/index.js") ?>"></script>
-
+<!-- The Canvas to Blob plugin is included for image resizing functionality -->
 <? if ($PageJS) : ?>
     <script type="module" src="<?= vite("src/js/pages/$PageJS") ?>"></script>
 <? endif; ?>

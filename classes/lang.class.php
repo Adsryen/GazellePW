@@ -1,45 +1,106 @@
 <?
 
-global $Locales, $Twig, $WINDOW_CONFIG;
-$Files = glob(CONFIG['SERVER_ROOT'] . '/src/locales/*/server.yaml');
-$Locales = [];
-foreach ($Files as $File) {
-    $Lang = basename(dirname($File));
-    $YamlText = $Twig->render("$Lang/server.yaml", ['CONFIG' => $WINDOW_CONFIG]);
-    $Locale = yaml_parse($YamlText);
-    $Lang = $Lang == 'zh-Hans' ? 'chs' : $Lang;
-    $Locales[$Lang] = $Locale;
-}
-
 class Lang {
-    static $Lang = [];
-    const DEFAULT_LANG = 'chs';
     const EN = 'en';
     const CHS = 'chs';
-    const LANGS = [self::EN, self::CHS];
+    const PT = 'pt';
+    const LANGS = [self::EN, self::CHS, self::PT];
+    const DEFAULT_LANG = self::CHS;
+    const MAIN_LANG = self::EN;
+    const SUB_LANG = self::CHS;
+
+    static $Locales = [];
 
     public static function get($Key, $Options = []) {
-        global $Locales;
         $Options = array_merge([
             'DefaultValue' => null,
             'Lang' => null,
             'Values' => [],
+            'Count' => null,
         ], $Options);
-        $DefaultValue = $Options['DefaultValue'] ?: $Key;
         $Lang = self::getLang($Options['Lang']);
-        $Values = $Options['Values'];
-        $Locale = $Locales[$Lang];
-        $Value = get_by_path($Locale, $Key, $DefaultValue);
-        $Value = sprintf($Value, ...$Values);
-        if ($Value === false) {
+        $Value = self::getWithLang($Key, $Lang, $Options);
+
+        if (empty($Value)) {
+            $Value = self::getWithLang($Key, self::MAIN_LANG, $Options);
+        }
+        if (empty($Value)) {
             $Value = $Key;
         }
         return $Value;
     }
 
-    public static function get_key($Page, $Label = false, $Lang = false) {
-        $Locale = self::get($Page, false, $Lang);
-        return array_search($Label, $Locale);
+    public static function getWithLang($Key, $Lang, $Options = []) {
+
+        $DefaultValue = $Options['DefaultValue'];
+        $Values = $Options['Values'];
+        $Count = $Options['Count'];
+        $Locale = self::get_locale($Lang);
+        if ($Count !== null) {
+            $Suffix = ($Count === 1) ? '_one' : '_other';
+            $Key = "${Key}${Suffix}";
+        }
+
+        $Value = $Locale[$Key];
+        if (!isset($Locale[$Key]) && !empty($DefaultValue)) {
+            $Value = $DefaultValue;
+        }
+
+        if (!empty($Value) && is_string($Value)) {
+            $Value = sprintf($Value, ...$Values);
+        }
+
+        return $Value;
+    }
+
+    public static function choose_content($Content, $SubContent) {
+        $UserID = G::$LoggedUser['ID'];
+        $Lang = self::getUserLang($UserID);
+        if ($Lang == self::MAIN_LANG) {
+            if (!empty($Content)) {
+                return $Content;
+            }
+            return $SubContent;
+        } else if ($Lang == self::SUB_LANG) {
+            if (!empty($SubContent)) {
+                return $SubContent;
+            }
+        } else {
+            if (!empty($Content)) {
+                return $Content;
+            }
+            return $SubContent;
+        }
+        return $Content;
+    }
+
+    private static function get_locale($Lang) {
+        $NewLang = $Lang == 'chs' ? 'zh-Hans' : $Lang;
+        $Data = self::$Locales[$Lang];
+        if (!empty($Data)) {
+            return $Data;
+        }
+        global $WINDOW_CONFIG;
+        $YamlText = G::$Twig->render("$NewLang/$NewLang.yaml", ['CONFIG' => $WINDOW_CONFIG]);
+        $Locale = yaml_parse($YamlText);
+        self::$Locales[$Lang] = $Locale;
+        return $Locale;
+    }
+
+    // TODO by qwerty temp solution
+    public static function get_key($Prefix, $Value = false) {
+        foreach (self::LANGS as $Lang) {
+            $Locale = self::get_locale($Lang);
+            $Result =
+                array_filter($Locale, function ($element) use ($Value) {
+                    return isset($element) && strtolower($element) == strtolower($Value);
+                });
+            foreach ($Result as $K => $V) {
+                if (str_starts_with($K, $Prefix)) {
+                    return  $K;
+                }
+            }
+        }
     }
 
     public static function getUserLang($UserID) {
@@ -61,12 +122,13 @@ class Lang {
         return $Lang;
     }
 
-    public static function getLangfilePath($Page, $Lang = false) {
-        $Lang = self::getLang($Lang);
-        return CONFIG['SERVER_ROOT'] . "/lang/$Lang/lang_$Page.php";
+    public static function getCurrentLangStandard() {
+        global $LoggedUser;
+        $Lang = self::getUserLang($LoggedUser['ID']);
+        return $Lang == 'chs' ? 'zh-Hans' : $Lang;
     }
 
-    public static function getLang($Lang = false) {
+    private static function getLang($Lang = false) {
         if (!$Lang) {
             if (class_exists('G')) {
                 $UserID = false;
@@ -87,9 +149,13 @@ class Lang {
                 setcookie('lang', $Lang, time() + 60 * 60 * 24 * 365, '/');
             }
         }
-        if (!in_array($Lang, array('chs', 'en'))) {
+        if (!in_array($Lang, self::LANGS)) {
             $Lang = self::DEFAULT_LANG;
         }
         return $Lang;
     }
+}
+
+function t(...$args) {
+    return Lang::get(...$args);
 }

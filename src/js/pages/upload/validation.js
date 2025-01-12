@@ -7,14 +7,7 @@ const BD = ['Blu-ray']
 const SELECT_HAS_OTHER_INPUT = ['Other']
 const SELECT_REQUIRED = ['', '---']
 const IMDB_ID_PATTERN = /tt\d+/
-const IMAGE_HOSTS = [
-  'kshare.club',
-  'pixhost.to',
-  'ptpimg.me',
-  'img.pterclub.com',
-  'yes.ilikeshots.club',
-  'imgbox.com',
-]
+const IMAGE_HOSTS = window.DATA['IMAGE_HOST_WHITELIST']
 
 document.addEventListener('DOMContentLoaded', () => {
   registerValidation()
@@ -36,9 +29,7 @@ export function registerValidation() {
 
   form.onsubmit = function (e) {
     const valid = validator.validate()
-    document
-      .querySelector('.form-invalid .Form-errorMessage')
-      ?.classList.remove('animate__animated', 'animate__flash')
+    document.querySelector('.form-invalid .Form-errorMessage')?.classList.remove('animate__animated', 'animate__flash')
     if (valid) {
       $('input:disabled, select:disabled').prop('disabled', false)
       $('#post').addClass('is-loading').prop('disabled', true)
@@ -46,11 +37,7 @@ export function registerValidation() {
       document.querySelector('.form-invalid').scrollIntoView()
       document
         .querySelector('.form-invalid .Form-errorMessage')
-        .classList.add(
-          'animate__animated',
-          'animate__flash',
-          'animate__repeat-3'
-        )
+        .classList.add('animate__animated', 'animate__flash', 'animate__repeat-3')
     }
     return valid
   }
@@ -64,126 +51,134 @@ export function registerValidation() {
   addValidatorSelectInput({
     selector: `[name="releasetype"]`,
     validate: validateSelectInputRequired,
-    messageKey: 'upload.releasetype_required',
+    messageKey: 'client.upload.releasetype_required',
   })
 
   handleSourceAndProcessing()
   addValidatorSelectInput({
     selector: `[name="source"]`,
     validate: validateSelectInputRequired,
-    messageKey: 'upload.source_required',
+    messageKey: 'client.upload.source_required',
   })
   addValidatorSelectInput({
     selector: `[name="processing"]`,
     validate: validateProcessing,
-    messageKey: 'upload.processing_required',
+    messageKey: 'client.upload.processing_required',
   })
 
   handleResolution()
 
   handleSubtitle()
   addValidator({
+    selector: `[name="artist_ids[]"], [name="artists[]"],[name="importance[]"]`,
+    validate: validateArtists,
+    messageKey: 'client.upload.at_least_one_director',
+  })
+  addValidator({
     selector: `[name="subtitles[]"], [name=subtitle_type]`,
     validate: validateSubtitle,
-    messageKey: 'upload.subtitles_required',
+    messageKey: 'client.upload.subtitles_required',
   })
   addValidator({
     selector: `[name="subtitles[]"], [name=subtitle_type]`,
     validate: validateSubtitleWithMediainfo,
-    messageKey: 'upload.subtitles_with_mediainfo',
+    messageKey: 'client.upload.subtitles_with_mediainfo',
   })
 
   addValidator({
     selector: `[name="file_input"]`,
     validate: validateRequired,
-    messageKey: 'upload.torrent_file_required',
+    messageKey: 'client.upload.torrent_file_required',
   })
   addValidator({
     selector: `[name="tags"]`,
     validate: validateRequired,
-    messageKey: 'upload.tag_required',
+    messageKey: 'client.upload.tag_required',
   })
   addValidator({
     selector: `[name="imdb"]`,
     validate: validateImdb,
-    messageKey: 'upload.imdb_link_required',
+    messageKey: 'client.upload.imdb_link_required',
   })
   addValidator({
     selector: `[name="title"]`,
     validate: validateRequired,
-    messageKey: 'upload.movie_title_required',
+    messageKey: 'client.upload.movie_title_required',
   })
   addValidator({
     selector: `[name="year"]`,
     validate: validateRequired,
-    messageKey: 'upload.year_required',
+    messageKey: 'client.upload.year_required',
   })
   addValidator({
     selector: `[name="image"]`,
     validate: validateRequired,
-    messageKey: 'upload.poster_required',
+    messageKey: 'client.upload.poster_required',
   })
   addValidator({
-    selector: `[name="desc"]`,
-    validate: validateRequired,
-    messageKey: 'upload.movie_desc_required',
+    selector: `[name="desc"], [name="maindesc"]`,
+    validate: validateDesc,
+    messageKey: 'client.upload.movie_desc_required',
   })
 
   addValidator({
     selector: `[name="mediainfo[]"]`,
     validate: validateMediainfoRequired,
-    messageKey: 'upload.mediainfo_required',
+    messageKey: 'client.upload.mediainfo_required',
   })
   addValidator({
     selector: `[name="mediainfo[]"]`,
     validate: wrap(Videoinfo.validateCompleteNameRequired),
-    messageKey: 'upload.mediainfo_complete_name_required',
+    messageKey: 'client.upload.mediainfo_complete_name_required',
   })
   addValidator({
     selector: `[name="mediainfo[]"]`,
     validate: wrap(Videoinfo.validateTableSpace),
-    messageKey: 'upload.mediainfo_table_space',
+    messageKey: 'client.upload.mediainfo_table_space',
+  })
+
+  addValidator({
+    selector: `[name="mediainfo[]"]`,
+    validate: wrap(Videoinfo.validateMediaInfo),
+    messageKey: 'client.upload.mediainfo_valid_format',
   })
 
   addValidator({
     selector: `[name="release_desc"]`,
     validate: validateDescImg3Png,
-    messageKey: 'upload.desc_img_3_png',
+    messageKey: 'client.upload.desc_img_3_png',
   })
   addValidator({
     selector: `[name="release_desc"]`,
     validate: validateDescImgHosts,
-    messageKey: 'upload.desc_img_hosts',
+    messageKey: 'client.upload.desc_img_hosts',
   })
 
   addValidatorSelectInput({
     selector: `[name="codec"]`,
     validate: validateSelectInputRequired,
-    messageKey: 'upload.codec_required',
+    messageKey: 'client.upload.codec_required',
   })
   addValidatorSelectInput({
     selector: `[name="container"]`,
     validate: validateSelectInputRequired,
-    messageKey: 'upload.container_required',
+    messageKey: 'client.upload.container_required',
   })
   addValidatorSelectInput({
     selector: `[name="resolution"]`,
     validate: validateSelectInputRequired,
-    messageKey: 'upload.resolution_required',
+    messageKey: 'client.upload.resolution_required',
   })
   addValidator({
-    selector:
-      '[name=movie_edition_information], [name=remaster_title_show], [name=remaster_custom_title]',
+    selector: '[name=movie_edition_information], [name=remaster_title_show], [name=remaster_custom_title]',
     validate: validateRemaster,
-    messageKey: 'upload.remaster_required',
+    messageKey: 'client.upload.remaster_required',
   })
 }
 
 function validateRequired(value) {
   if (this.type === 'radio' || this.type === 'checkbox') {
-    return this.pristine.self.form.querySelectorAll(
-      'input[name="' + this.getAttribute('name') + '"]:checked'
-    ).length
+    return this.pristine.self.form.querySelectorAll('input[name="' + this.getAttribute('name') + '"]:checked').length
   } else {
     return Boolean(value)
   }
@@ -201,6 +196,15 @@ function validateSelectInputRequired({ select, inputs }) {
   } else {
     return true
   }
+}
+
+function validateDesc() {
+  const desc = document.querySelector('[name=desc]').value
+  const mainDesc = document.querySelector('[name=maindesc]').value
+  if (desc || mainDesc) {
+    return true
+  }
+  return false
 }
 
 function validateProcessing({ select, inputs }) {
@@ -244,7 +248,7 @@ export function validateDescImg3Png(value) {
   if (!matches) {
     return false
   }
-  return matches.length >= 3
+  return new Set(matches).size >= 3
 }
 
 export function validateDescImgHosts(value) {
@@ -269,9 +273,7 @@ export function validateDescComparison(value) {
   if (!value) {
     return true
   }
-  const matches = [
-    ...value.matchAll(/\[comparison.*?\]([\s\S]*?)\[\/comparison\]/gi),
-  ]
+  const matches = [...value.matchAll(/\[comparison.*?\]([\s\S]*?)\[\/comparison\]/gi)]
   const pattern = `(${IMAGE_HOSTS.join('|')}).*?png`
   if (matches) {
     for (const match of matches) {
@@ -291,10 +293,7 @@ export function validateDescComparison(value) {
 }
 
 function validateImdb(value) {
-  if (
-    (value && value.match(IMDB_ID_PATTERN)) ||
-    $('[name=no_imdb_link]').prop('checked')
-  ) {
+  if ((value && value.match(IMDB_ID_PATTERN)) || $('[name=no_imdb_link]').prop('checked')) {
     return true
   } else {
     return false
@@ -305,10 +304,7 @@ function validateRemaster() {
   const notMainMovie = $('[name=not_main_movie]').prop('checked')
   const remasterTitleShow = $('[name=remaster_title_show]').val()
   const remasterCustomTitle = $('[name=remaster_custom_title]').val()
-  if (
-    notMainMovie &&
-    !(remasterTitleShow.match(/额外内容/) || remasterCustomTitle)
-  ) {
+  if (notMainMovie && !(remasterTitleShow.match(/额外内容/) || remasterCustomTitle)) {
     return false
   }
   return true
@@ -319,14 +315,14 @@ function createValidator({ validator }) {
   return {
     addValidator({ selector, validate, messageKey }) {
       const inputs = Array.from(form.querySelectorAll(selector))
-      const message = lang.get(messageKey)
+      const message = t(messageKey)
       for (const input of inputs) {
         validator.addValidator(input, validate, message)
       }
     },
 
     addValidatorSelectInput({ selector, validate, messageKey }) {
-      const message = lang.get(messageKey)
+      const message = t(messageKey)
       const select = form.querySelector(selector)
       if (!select) {
         return
@@ -334,16 +330,10 @@ function createValidator({ validator }) {
       let inputs = []
       const nextEl = select.nextElementSibling
       if (nextEl) {
-        inputs = ['INPUT', 'SELECT'].includes(nextEl.tagName)
-          ? [nextEl]
-          : Array.from(nextEl.querySelectorAll('input'))
+        inputs = ['INPUT', 'SELECT'].includes(nextEl.tagName) ? [nextEl] : Array.from(nextEl.querySelectorAll('input'))
       }
       for (const elem of [select, ...inputs]) {
-        validator.addValidator(
-          elem,
-          () => validate({ select, inputs }),
-          message
-        )
+        validator.addValidator(elem, () => validate({ select, inputs }), message)
       }
     },
   }
@@ -365,10 +355,7 @@ export function handleSourceAndProcessing() {
     }
 
     // processing other
-    if (
-      processing.value === 'Untouched' &&
-      [...DVD, ...BD].includes(source.value)
-    ) {
+    if (processing.value === 'Untouched' && [...DVD, ...BD].includes(source.value)) {
       processingOther.disabled = false
       processingOther.classList.remove('hidden')
       const showSelector = BD.includes(source.value) ? '.bd' : '.dvd'
@@ -428,28 +415,38 @@ function handleSubtitle() {
 }
 function validateSubtitle() {
   const form = this.pristine.self.form
-  const subtitleType = Array.from(
-    form.querySelectorAll(`[name="subtitle_type"]:checked`)
-  )[0]
+  const subtitleType = Array.from(form.querySelectorAll(`[name="subtitle_type"]:checked`))[0]
   if (!subtitleType) {
     return false
   }
   const type = subtitleType.getAttribute('data-value')
   if (type !== 'no-sub') {
-    if (
-      Array.from(form.querySelectorAll(`[name="subtitles[]"]:checked`))
-        .length === 0
-    ) {
+    if (Array.from(form.querySelectorAll(`[name="subtitles[]"]:checked`)).length === 0) {
       return false
     }
   }
   return true
 }
 
+function validateArtists() {
+  const artist_ids = document.querySelectorAll('[name="artist_ids[]"]')
+  const artists = document.querySelectorAll('[name="artists[]"]')
+  const importances = document.querySelectorAll('[name="importance[]"]')
+  let hasDirector = false
+  for (var i = 0; i < artist_ids.length; i++) {
+    if (importances[i].value == 1 && (artist_ids[i].value || artists[i].value)) {
+      hasDirector = true
+    }
+  }
+  if (hasDirector) {
+    return true
+  }
+
+  return false
+}
+
 function validateSubtitleWithMediainfo() {
-  const checkedSubtitles = Array.from(
-    document.querySelectorAll(`[name="subtitles[]"]:checked`)
-  )
+  const checkedSubtitles = Array.from(document.querySelectorAll(`[name="subtitles[]"]:checked`))
   if (checkedSubtitles.length > 0) {
     return true
   }
@@ -482,15 +479,13 @@ export function handleSelectInput({ watch, apply }) {
     if (SELECT_HAS_OTHER_INPUT.includes(select.value)) {
       other.classList.remove('hidden')
       other.disabled = false // for validation
-    } else {
+    } else if (other != null) {
       other.classList.add('hidden')
       other.disabled = true
     }
   }
 
-  for (const selectInput of Array.from(
-    document.querySelectorAll('.SelectInput')
-  )) {
+  for (const selectInput of Array.from(document.querySelectorAll('.SelectInput'))) {
     const select = selectInput.querySelector('select')
     const input = select.nextElementSibling
     if (watch) {

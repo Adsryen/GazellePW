@@ -4,21 +4,7 @@ define('MEMORY_EXCEPTION', true);
 define('TIME_EXCEPTION', true);
 define('ERROR_EXCEPTION', true);
 
-require_once(__DIR__ . '/../classes/config.php');
-require_once(__DIR__ . '/../classes/const.php');
-require_once(__DIR__ . '/../vendor/autoload.php');
-require_once(__DIR__ . '/../classes/time.class.php'); //Require the time class
-require_once(__DIR__ . '/../classes/paranoia.class.php'); //Require the paranoia check_paranoia function
-require_once(__DIR__ . '/../classes/util.php');
-
-$Debug = new DEBUG;
-$Debug->handle_errors();
-
-$DB = new DB_MYSQL;
-$Cache = new CACHE($MemcachedServers);
-
-G::$Cache = $Cache;
-G::$DB = $DB;
+require(__DIR__ . '/../classes/includes.php');
 
 define('WIDTH', 585);
 define('HEIGHT', 400);

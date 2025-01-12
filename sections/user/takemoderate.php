@@ -25,7 +25,7 @@ $DeleteKeys = false;
 // Variables for database input
 $Class = (int)$_POST['Class'];
 $Username = db_string($_POST['Username']);
-$Title = db_string(Text::full_format($_POST['Title']));
+$Title = db_string($_POST['Title']);
 $Donor = isset($_POST['Donor']) ? 1 : 0;
 $Artist = isset($_POST['Artist']) ? 1 : 0;
 $SecondaryClasses = isset($_POST['secondary_classes']) ? $_POST['secondary_classes'] : array();
@@ -164,7 +164,7 @@ if (!$DB->has_results()) { // If user doesn't exist
 
 $Cur = $DB->next_record(MYSQLI_ASSOC, false);
 if ($_POST['comment_hash'] != $Cur['CommentHash']) {
-    error(Lang::get('user.somebody_else_has_moderated'));
+    error(t('server.user.somebody_else_has_moderated'));
 }
 
 //NOW that we know the class of the current user, we can see if one staff member is trying to hax0r us.
@@ -174,10 +174,11 @@ if (!check_perms('users_mod', $Cur['Class'])) {
     die();
 }
 $donation = new Donation();
-if (!empty($_POST['donor_points_submit']) && !empty($_POST['donation_value']) && is_numeric($_POST['donation_value'])) {
+$OldDonation = $donation->info($UserID);
+$OldRank = $OldDonation['Rank'] >= MAX_RANK ? MAX_RANK : $OldDonation['Rank'];
+$OldTotalRank = $OldDonation['TotRank'];
+if (!empty($_POST['donation_value']) && is_numeric($_POST['donation_value'])) {
     $donation->moderatorDonate($UserID, $_POST['donation_value'], $_POST['donation_currency'], $_POST['donation_reason'], DonationSource::AddPoint, $LoggedUser['ID']);
-} elseif (!empty($_POST['donor_values_submit'])) {
-    $donation->moderatorAdjust($UserID, $_POST['donor_rank'], $_POST['total_donor_rank'], $_POST['reason'], $LoggedUser['ID']);
 }
 
 
@@ -379,20 +380,20 @@ if ($Username !== $Cur['Username'] && check_perms('users_edit_usernames', $Cur['
         error('You cannot set a username of "0" or "1".');
         header("Location: user.php?id=$UserID");
         die();
-    } else {
-        $UpdateSet[] = "Username = '$Username'";
-        $EditSummary[] = "username changed from " . $Cur['Username'] . " to $Username";
-        $LightUpdates['Username'] = $Username;
     }
+    $UpdateSet[] = "Username = '$Username'";
+    $EditSummary[] = "username changed from " . $Cur['Username'] . " to $Username";
+    $LightUpdates['Username'] = $Username;
 }
 
-if ($Title != db_string(display_str($Cur['Title'])) && check_perms('users_edit_titles')) {
+if ($Title != db_string($Cur['Title']) && check_perms('users_edit_titles')) {
     // Using the unescaped value for the test to avoid confusion
     if (mb_strlen($_POST['Title']) > 2048) {
         error("Custom titles have a maximum length of 2,048 characters.");
         header("Location: user.php?id=$UserID");
         die();
     } else {
+
         $UpdateSet[] = "Title = '$Title'";
         $EditSummary[] = "title changed to [code]{$Title}[/code]";
         $LightUpdates['Title'] = $_POST['Title'];
@@ -503,11 +504,11 @@ if ($Invites != $Cur['Invites'] && check_perms('users_edit_invites')) {
 }
 
 if ($Warned == 1 && $Cur['Warned'] == '0000-00-00 00:00:00' && check_perms('users_warn')) {
-    $Weeks = Lang::get('user.week') . ($WarnLength === 1 ? '' : Lang::get('user.s'));
+    $Weeks = t('server.user.week', ['Count' => $WarnLength]);
     Misc::send_pm_with_tpl(
         $UserID,
         'comment_warning',
-        ['Length' => $WarnLength, 'URL' => 'wiki.php?action=article&amp;name=warnings', 'PrivateMessage' => $WarnReason]
+        ['Length' => $WarnLength, 'URL' => 'wiki.php?action=article&name=warnings', 'PrivateMessage' => $WarnReason]
     );
     $UpdateSet[] = "Warned = '" . sqltime() . "' + INTERVAL $WarnLength WEEK";
     $Msg = "warned for $WarnLength $Weeks";
@@ -835,14 +836,18 @@ if ($DeleteKeys) {
 
 $Summary = '';
 // Create edit summary
-if ($EditSummary) {
-    $Summary = implode(', ', $EditSummary) . ' by ' . $LoggedUser['Username'];
-    $Summary = sqltime() . ' - ' . ucfirst($Summary);
+if ($EditSummary || $Reason) {
+    if ($EditSummary) {
+        $Summary = implode(', ', $EditSummary) . ' by ' . $LoggedUser['Username'];
+        $Summary = sqltime() . ' - ' . ucfirst($Summary);
 
-    if ($Reason) {
-        $Summary .= "\nReason: $Reason";
+        if ($Reason) {
+            $Summary .= "\nReason: $Reason";
+        }
+    } else {
+        $Summary .=  sqltime() . ' - ' . "Comment: " . $Reason . " by " . $LoggedUser['Username'];
     }
-    $AdminComment = $Cur['AdminComment'];
+    $AdminComment = db_string($Cur['AdminComment']);
     $Summary .= "\n\n$AdminComment";
 }
 
@@ -853,21 +858,21 @@ if (!empty($Summary)) {
 
 
 // Build query
-
-$SET = implode(', ', $UpdateSet);
-
-$SQL = "
+if (count($UpdateSet) > 0) {
+    $SET = implode(', ', $UpdateSet);
+    $SQL = "
 	UPDATE users_main AS m
 		JOIN users_info AS i ON m.ID = i.UserID
 	SET $SET
 	WHERE m.ID = '$UserID'";
 
-// Perform update
-//die($SQL);
-$DB->query($SQL);
+    // Perform update
+    //die($SQL);
+    $DB->query($SQL);
 
-if (isset($ClearStaffIDCache)) {
-    $Cache->delete_value('staff_ids');
+    if (isset($ClearStaffIDCache)) {
+        $Cache->delete_value('staff_ids');
+    }
 }
 
 // redirect to user page

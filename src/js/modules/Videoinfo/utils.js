@@ -4,11 +4,36 @@ export function GB(size) {
   return size * 1024 * 1024 * 1024
 }
 
+export const AUDIO_OPTION = {
+  LOSSLESS: 'audio_lossless',
+  CHANNEL51: 'audio_51',
+  CHANNEL71: 'audio_71',
+  DTSX: 'dtsx',
+  DOLBYATMOS: 'dolby_atmos',
+}
+
+export const VIDEO_OPTION = {
+  BIT10: 'color_10bit',
+  HDR10: 'hdr10',
+  HDR10PLUS: 'hdr10_plus',
+  DOLBYVISION: 'dolby_vision',
+}
+
 export const DISK_SIZE = {
   BD25: GB(23.28),
   BD50: GB(46.57),
   BD66: GB(61.47),
   BD100: GB(93.13),
+}
+
+export function splitIntoBDInfoSections(text) {
+  return compact(
+    text
+      .trim()
+      .replace(/\n\r/, '\n')
+      .split(/([a-zA-Z ]*:\n)/)
+      .map((v) => v.trim())
+  )
 }
 
 export function splitIntoSections(text) {

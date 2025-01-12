@@ -1,5 +1,5 @@
 <?
-View::show_header(Lang::get('rules.clients_title'), '', 'PageRuleClient');
+View::show_header(t('server.rules.clients_title'), '', 'PageRuleClient');
 
 if (!$WhitelistedClients = $Cache->get_value('whitelisted_clients')) {
     $DB->query('
@@ -14,7 +14,9 @@ if (!$WhitelistedClients = $Cache->get_value('whitelisted_clients')) {
 
 <div class="LayoutBody">
     <? include('jump.php'); ?>
-    <div class="HtmlText BoxBody" id="Rules-Clients-mdx" mdx></div>
+    <div class="Post">
+        <div class="HtmlText Post-body" id="Rules-Clients-mdx" mdx></div>
+    </div>
 </div>
 
 <script>

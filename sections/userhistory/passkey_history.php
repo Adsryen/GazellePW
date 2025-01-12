@@ -29,7 +29,7 @@ if (!check_perms('users_view_keys', $Class)) {
     error(403);
 }
 
-View::show_header(Lang::get('userhistory.passkey_history_for_before') . "$Username" . Lang::get('userhistory.passkey_history_for_after'), '', 'PageUserHistoryPasskey');
+View::show_header(t('server.userhistory.passkey_history_for', ['Values' => [$Username]]), '', 'PageUserHistoryPasskey');
 
 $DB->query("
 	SELECT
@@ -42,25 +42,31 @@ $DB->query("
 	ORDER BY ChangeTime DESC");
 
 ?>
-<div class="BodyHeader">
-    <h2 class="BodyHeader-nav"><?= Lang::get('userhistory.passkey_history_for_before') ?><a href="/user.php?id=<?= $UserID ?>"><?= $Username ?></a><?= Lang::get('userhistory.passkey_history_for_after') ?></h2>
-</div>
-<div class="TableContainer">
-    <table class="TableUserPasskeyHihstory Table">
-        <tr class="Table-rowHeader">
-            <td class="Table-cell"><?= Lang::get('userhistory.old') ?></td>
-            <td class="Table-cell"><?= Lang::get('userhistory.new') ?></td>
-            <td class="Table-cell"><?= Lang::get('userhistory.changed') ?></td>
-            <td class="Table-cell">IP <a href="/userhistory.php?action=ips&amp;userid=<?= $UserID ?>" class="brackets">H</a></td>
-        </tr>
-        <? while (list($OldPassKey, $NewPassKey, $ChangeTime, $ChangerIP) = $DB->next_record()) { ?>
-            <tr class="Table-row">
-                <td class="Table-cell"><?= display_str($OldPassKey) ?></td>
-                <td class="Table-cell"><?= display_str($NewPassKey) ?></td>
-                <td class="Table-cell"><?= time_diff($ChangeTime) ?></td>
-                <td class="Table-cell"><?= display_str($ChangerIP) ?> <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($ChangerIP) ?>" class="brackets" data-tooltip="Search">S</a><br /><?= display_str(Tools::get_host_by_ip($ChangerIP)) ?></td>
+<div class="LayoutPage">
+    <div class="BodyHeader">
+        <h2 class="BodyHeader-nav">
+            <?= t('server.userhistory.passkey_history_for', ['Values' => [
+                Users::format_username($UserID)
+            ]]) ?>
+        </h2>
+    </div>
+    <div class="TableContainer">
+        <table class="TableUserPasskeyHihstory Table">
+            <tr class="Table-rowHeader">
+                <td class="Table-cell"><?= t('server.userhistory.old') ?></td>
+                <td class="Table-cell"><?= t('server.userhistory.new') ?></td>
+                <td class="Table-cell"><?= t('server.userhistory.changed') ?></td>
+                <td class="Table-cell">IP <a href="/userhistory.php?action=ips&amp;userid=<?= $UserID ?>" class="brackets">H</a></td>
             </tr>
-        <? } ?>
-    </table>
+            <? while (list($OldPassKey, $NewPassKey, $ChangeTime, $ChangerIP) = $DB->next_record()) { ?>
+                <tr class="Table-row">
+                    <td class="Table-cell"><?= display_str($OldPassKey) ?></td>
+                    <td class="Table-cell"><?= display_str($NewPassKey) ?></td>
+                    <td class="Table-cell"><?= time_diff($ChangeTime) ?></td>
+                    <td class="Table-cell"><?= display_str($ChangerIP) ?> <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($ChangerIP) ?>" class="brackets" data-tooltip="Search">S</a><br /><?= display_str(Tools::get_host_by_ip($ChangerIP)) ?></td>
+                </tr>
+            <? } ?>
+        </table>
+    </div>
 </div>
 <? View::show_footer(); ?>

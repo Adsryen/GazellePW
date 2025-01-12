@@ -37,7 +37,7 @@ $DB->query("
 	FROM users_main
 	WHERE ID = $UserID");
 list($Username) = $DB->next_record();
-View::show_header(Lang::get('userhistory.email_history_for_before') . "$Username" . Lang::get('userhistory.email_history_for_after'), '', 'PageUserEmail2');
+View::show_header(t('server.userhistory.email_history_for', ['Values' => [$Username]]), '', 'PageUserEmail2');
 
 // Get current email (and matches)
 $DB->query(
@@ -174,19 +174,20 @@ if ($Old) {
 ?>
 <div class="LayoutBody">
     <div class="BodyHeader">
-        <h2 class="BodyHeader-nav"><?= Lang::get('userhistory.email_history_for_before') ?><a href="user.php?id=<?= $UserID ?>"><?= $Username ?></a><?= Lang::get('userhistory.email_history_for_after') ?></h2>
-        <div class="BodyNavLinks center">
-            <a href="userhistory.php?action=email&amp;userid=<?= $UserID ?>" class="brackets"><?= Lang::get('userhistory.email_history_for_before') ?></a>
-        </div>
+        <h2 class="BodyHeader-nav">
+            <?= t('server.userhistory.email_history_for', ['Values' => [
+                Users::format_username($UserID)
+            ]]) ?>
+        </h2>
     </div>
     <div class="TableContainer">
         <table class="TableUserEmailHistory Table">
             <tr class="Table-rowHeader">
-                <td class="Table-cell"><?= Lang::get('userhistory.current_email') ?></td>
-                <td class="Table-cell"><?= Lang::get('userhistory.start') ?></td>
-                <td class="Table-cell"><?= Lang::get('userhistory.end') ?></td>
-                <td class="Table-cell"><?= Lang::get('userhistory.current_ip') ?> <a href="userhistory.php?action=ips&amp;userid=<?= $UserID ?>" class="brackets">H</a></td>
-                <td class="Table-cell"><?= Lang::get('userhistory.set_from_ip') ?></td>
+                <td class="Table-cell"><?= t('server.userhistory.current_email') ?></td>
+                <td class="Table-cell"><?= t('server.userhistory.start') ?></td>
+                <td class="Table-cell"><?= t('server.userhistory.end') ?></td>
+                <td class="Table-cell"><?= t('server.userhistory.current_ip') ?> <a href="userhistory.php?action=ips&amp;userid=<?= $UserID ?>" class="brackets">H</a></td>
+                <td class="Table-cell"><?= t('server.userhistory.set_from_ip') ?></td>
             </tr>
             <tr class="Table-row">
                 <td class="Table-cell"><?= display_str($Current['Email']) ?></td>
@@ -196,7 +197,7 @@ if ($Old) {
                     <?= display_str($Current['CurrentIP']) ?>
                     (<?= Tools::get_country_code_by_ajax($Current['CurrentIP']) ?>)
                     <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($Current['CurrentIP']) ?>" class="brackets" data-tooltip="Search">S</a>
-                    <a href="http://whatismyipaddress.com/ip/<?= display_str($Current['CurrentIP']) ?>" class="brackets" data-tooltip="Search WIMIA.com">WI</a>
+                    <a href="http://whatismyipaddress.com/ip/<?= display_str($Current['CurrentIP']) ?>" class="brackets" data-tooltip="Search WIMIA.com" target="_blank">WI</a>
                     <br />
                     <?= Tools::get_host_by_ajax($Current['CurrentIP']) ?>
                 </td>
@@ -204,7 +205,7 @@ if ($Old) {
                     <?= display_str($Current['IP']) ?>
                     (<?= Tools::get_country_code_by_ajax($Current['IP']) ?>)
                     <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($Current['IP']) ?>" class="brackets" data-tooltip="Search">S</a>
-                    <a href="http://whatismyipaddress.com/ip/<?= display_str($Current['IP']) ?>" class="brackets" data-tooltip="Search WIMIA.com">WI</a>
+                    <a href="http://whatismyipaddress.com/ip/<?= display_str($Current['IP']) ?>" class="brackets" data-tooltip="Search WIMIA.com" target="_blank">WI</a>
                     <br />
                     <?= Tools::get_host_by_ajax($Current['IP']) ?>
                 </td>
@@ -223,23 +224,30 @@ if ($Old) {
                             <?= display_str($Match['IP']) ?>
                             (<?= Tools::get_country_code_by_ajax($Match['IP']) ?>)
                             <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($Match['IP']) ?>" class="brackets" data-tooltip="Search">S</a>
-                            <a href="http://whatismyipaddress.com/ip/<?= display_str($Match['IP']) ?>" class="brackets" data-tooltip="Search WIMIA.com">WI</a>
+                            <a href="http://whatismyipaddress.com/ip/<?= display_str($Match['IP']) ?>" class="brackets" data-tooltip="Search WIMIA.com" target="_blank">WI</a>
                             <br />
                             <?= Tools::get_host_by_ajax($Match['IP']) ?>
                         </td>
                     </tr>
-                <?
+            <?
                 }
             }
-            // Old emails
-            if ($Old) {
-                ?>
+            ?>
+        </table>
+    </div>
+    <?
+    // Old emails
+    if ($Old) {
+    ?>
+        <div class="TableContainer">
+            <table class="Table">
+
                 <tr class="Table-rowHeader">
-                    <td class="Table-cell"><?= Lang::get('userhistory.old_emails') ?></td>
-                    <td class="Table-cell"><?= Lang::get('userhistory.start') ?></td>
-                    <td class="Table-cell"><?= Lang::get('userhistory.end') ?></td>
-                    <td class="Table-cell"><?= Lang::get('userhistory.elapsed') ?></td>
-                    <td class="Table-cell"><?= Lang::get('userhistory.set_from_ip') ?></td>
+                    <td class="Table-cell"><?= t('server.userhistory.old_emails') ?></td>
+                    <td class="Table-cell"><?= t('server.userhistory.start') ?></td>
+                    <td class="Table-cell"><?= t('server.userhistory.end') ?></td>
+                    <td class="Table-cell"><?= t('server.userhistory.elapsed') ?></td>
+                    <td class="Table-cell"><?= t('server.userhistory.set_from_ip') ?></td>
                 </tr>
                 <?
                 $j = 0;
@@ -264,7 +272,7 @@ if ($Old) {
                                     <?= display_str($Match['IP']) ?>
                                     (<?= Tools::get_country_code_by_ajax($Match['IP']) ?>)
                                     <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($Match['IP']) ?>" class="brackets" data-tooltip="Search">S</a>
-                                    <a href="http://whatismyipaddress.com/ip/<?= display_str($Match['IP']) ?>" class="brackets" data-tooltip="Search WIMIA.com">WI</a>
+                                    <a href="http://whatismyipaddress.com/ip/<?= display_str($Match['IP']) ?>" class="brackets" data-tooltip="Search WIMIA.com" target="_blank">WI</a>
                                     <br />
                                     <?= Tools::get_host_by_ajax($Match['IP']) ?>
                                 </td>
@@ -286,13 +294,13 @@ if ($Old) {
                         <td class="Table-cell">
                             <?= display_str($Record['IP']) ?>
                             (<?= Tools::get_country_code_by_ajax($Record['IP']) ?>)
-                            <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($Record['IP']) ?>" class="brackets" data-tooltip="<?= Lang::get('userhistory.search') ?>">S</a>
-                            <a href="http://whatismyipaddress.com/ip/<?= display_str($Record['IP']) ?>" class="brackets" data-tooltip="<?= Lang::get('userhistory.search_wimia_com') ?>">WI</a>
+                            <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($Record['IP']) ?>" class="brackets" data-tooltip="<?= t('server.userhistory.search') ?>">S</a>
+                            <a href="http://whatismyipaddress.com/ip/<?= display_str($Record['IP']) ?>" class="brackets" data-tooltip="<?= t('server.userhistory.search_wimia_com') ?>" target="_blank">WI</a>
                             <br />
                             <?= Tools::get_host_by_ajax($Record['IP']) ?>
                         </td>
                     </tr>
-            <?
+                <?
                     if ($MatchCount > 0) {
                         if (isset($Matches)) {
                             echo $Matches;
@@ -301,15 +309,21 @@ if ($Old) {
                         }
                     }
                 }
-            }
-            // Invite email (always there)
-            ?>
+                ?>
+            </table>
+        </div>
+    <?
+    }
+    // Invite email (always there)
+    ?>
+    <div class="TableContainer">
+        <table class="Table">
             <tr class="Table-rowHeader">
-                <td class="Table-cell"><?= Lang::get('userhistory.invite_email') ?></td>
-                <td class="Table-cell"><?= Lang::get('userhistory.start') ?></td>
-                <td class="Table-cell"><?= Lang::get('userhistory.end') ?></td>
-                <td class="Table-cell"><?= Lang::get('userhistory.age_of_account') ?></td>
-                <td class="Table-cell"><?= Lang::get('userhistory.registration_ip_address') ?></td>
+                <td class="Table-cell"><?= t('server.userhistory.invite_email') ?></td>
+                <td class="Table-cell"><?= t('server.userhistory.start') ?></td>
+                <td class="Table-cell"><?= t('server.userhistory.end') ?></td>
+                <td class="Table-cell"><?= t('server.userhistory.age_of_account') ?></td>
+                <td class="Table-cell"><?= t('server.userhistory.registration_ip_address') ?></td>
             </tr>
             <?
             // Matches on invite email
@@ -329,8 +343,8 @@ if ($Old) {
                             <td class="Table-cell">
                                 <?= display_str($Match['IP']) ?>
                                 (<?= Tools::get_country_code_by_ajax($Match['IP']) ?>)
-                                <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($Match['IP']) ?>" class="brackets" data-tooltip="<?= Lang::get('userhistory.search') ?>">S</a>
-                                <a href="http://whatismyipaddress.com/ip/<?= display_str($Match['IP']) ?>" class="brackets" data-tooltip="<?= Lang::get('userhistory.search_wimia_com') ?>">WI</a>
+                                <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($Match['IP']) ?>" class="brackets" data-tooltip="<?= t('server.userhistory.search') ?>">S</a>
+                                <a href="http://whatismyipaddress.com/ip/<?= display_str($Match['IP']) ?>" class="brackets" data-tooltip="<?= t('server.userhistory.search_wimia_com') ?>" target="_blank">WI</a>
                                 <br />
                                 <?= Tools::get_host_by_ajax($Match['IP']) ?>
                             </td>
@@ -345,14 +359,14 @@ if ($Old) {
             ?>
             <tr class="Table-row">
                 <td class="Table-cell"><?= display_str($Invite['Email']) ?><?= (($MatchCount > 0) ? ' <a href="#" onclick="$(\'#matches_invite\').gtoggle(); return false;">(' . $MatchCount . ')</a>' : '') ?></td>
-                <td class="Table-cell"><?= Lang::get('userhistory.never') ?></td>
+                <td class="Table-cell"><?= t('server.userhistory.never') ?></td>
                 <td class="Table-cell"><?= time_diff($Invite['EndTime']) ?></td>
                 <td class="Table-cell"><?= time_diff($Invite['AccountAge']) ?></td>
                 <td class="Table-cell">
                     <?= display_str($Invite['IP']) ?>
                     (<?= Tools::get_country_code_by_ajax($Invite['IP']) ?>)
-                    <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($Invite['IP']) ?>" class="brackets" data-tooltip="<?= Lang::get('userhistory.search') ?>">S</a>
-                    <a href="http://whatismyipaddress.com/ip/<?= display_str($Invite['IP']) ?>" class="brackets" data-tooltip="<?= Lang::get('userhistory.search_wimia_com') ?>">WI</a>
+                    <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($Invite['IP']) ?>" class="brackets" data-tooltip="<?= t('server.userhistory.search') ?>">S</a>
+                    <a target="_blank" href="http://whatismyipaddress.com/ip/<?= display_str($Invite['IP']) ?>" class="brackets" data-tooltip="<?= t('server.userhistory.search_wimia_com') ?>" target="_blank">WI</a>
                     <br />
                     <?= Tools::get_host_by_ajax($Invite['IP']) ?>
                 </td>

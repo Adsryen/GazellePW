@@ -36,7 +36,7 @@ if (!check_perms('users_view_ips', $Class)) {
 
 $UsersOnly = $_GET['usersonly'];
 
-View::show_header(Lang::get('userhistory.tracker_ip_address_history_for_before') . "$Username" . Lang::get('userhistory.tracker_ip_address_history_for_after'), '', 'PageUserHistoryIPTracker');
+View::show_header(t('server.userhistory.tracker_ip_address_history_for', ['Values' => [$Username]]), '', 'PageUserHistoryIPTracker');
 ?>
 <script type="text/javascript">
     function ShowIPs(rowname) {
@@ -63,38 +63,47 @@ $Pages = Format::get_pages($Page, $NumResults, IPS_PER_PAGE, 9);
 ?>
 <div class="LayoutBody">
     <div class="BodyHeader">
-        <h2 class="BodyHeader-nav"><?= Lang::get('userhistory.tracker_ip_address_history_for_before') ?><a href="user.php?id=<?= $UserID ?>"><?= $Username ?></a><?= Lang::get('userhistory.tracker_ip_address_history_for_after') ?></h2>
+        <h2 class="BodyHeader-nav">
+            <?= t('server.userhistory.tracker_ip_address_history_for', ['Values' => [
+                Users::format_username($UserID)
+            ]]) ?>
+        </h2>
     </div>
-    <div class="BodyNavLinks"><?= $Pages ?></div>
-    <div class="TableContainer">
-        <table class="TableUserTrakcerIPHistory Table">
-            <tr class="Table-rowHeader">
-                <td class="Table-cell"><?= Lang::get('userhistory.ip_address') ?></td>
-                <td class="Table-cell"><?= Lang::get('global.torrent') ?></td>
-                <td class="Table-cell"><?= Lang::get('userhistory.time') ?></td>
-            </tr>
-            <?
-            $Results = $DB->to_array();
-            foreach ($Results as $Index => $Result) {
-                list($IP, $TorrentID, $Time) = $Result;
-
-            ?>
-                <tr class="Table-row">
-                    <td class="Table-cell">
-                        <?= $IP ?> (<?= Tools::get_country_code_by_ajax($IP) ?>)<br /><?= Tools::get_host_by_ajax($IP) ?>
-                        <a href="http://whatismyipaddress.com/ip/<?= display_str($IP) ?>" class="brackets" data-tooltip="<?= Lang::get('userhistory.search_wimia_com') ?>">WI</a>
-                    </td>
-                    <td class="Table-cell"><a href="torrents.php?torrentid=<?= $TorrentID ?>"><?= $TorrentID ?></a></td>
-                    <td class="Table-cell"><?= date('Y-m-d g:i:s', $Time) ?></td>
+    <? if ($NumResults > 0) { ?>
+        <div class="BodyNavLinks"><?= $Pages ?></div>
+        <div class="TableContainer">
+            <table class="TableUserTrakcerIPHistory Table">
+                <tr class="Table-rowHeader">
+                    <td class="Table-cell"><?= t('server.userhistory.ip_address') ?></td>
+                    <td class="Table-cell"><?= t('server.common.torrent') ?></td>
+                    <td class="Table-cell"><?= t('server.userhistory.time') ?></td>
                 </tr>
-            <?
-            }
-            ?>
-        </table>
-    </div>
-    <div class="BodyNavLinks">
-        <?= $Pages ?>
-    </div>
+                <?
+                $Results = $DB->to_array();
+                foreach ($Results as $Index => $Result) {
+                    list($IP, $TorrentID, $Time) = $Result;
+
+                ?>
+                    <tr class="Table-row">
+                        <td class="Table-cell">
+                            <?= $IP ?> (<?= Tools::get_country_code_by_ajax($IP) ?>)<br /><?= Tools::get_host_by_ajax($IP) ?>
+                            <a href="http://whatismyipaddress.com/ip/<?= display_str($IP) ?>" class="brackets" data-tooltip="<?= t('server.userhistory.search_wimia_com') ?>" target="_blank">WI</a>
+                        </td>
+                        <td class="Table-cell"><a href="torrents.php?torrentid=<?= $TorrentID ?>"><?= $TorrentID ?></a></td>
+                        <td class="Table-cell"><?= date('Y-m-d g:i:s', $Time) ?></td>
+                    </tr>
+                <?
+                }
+                ?>
+            </table>
+        </div>
+        <div class="BodyNavLinks">
+            <?= $Pages ?>
+        </div>
+    <? } else {
+        VIew::line(t('server.common.no_results'));
+    }
+    ?>
 </div>
 
 <?

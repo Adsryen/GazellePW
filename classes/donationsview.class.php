@@ -5,53 +5,23 @@ use Gazelle\Manager\Donation;
 class DonationsView {
     public static function render_mod_donations($Rank, $TotalRank) {
 ?>
-        <table class="TableDonateBox Table Form-rowList">
-            <tr class="Form-rowHeader">
-                <td colspan="2"><?= Lang::get('user.donor_system_add_points') ?></td>
-            </tr>
-            <tr class="Form-row">
-                <td class="Form-label"><?= Lang::get('user.value') ?>:</td>
-                <td class="Form-inputs">
-                    <input class="Input is-small" type="text" name="donation_value" onkeypress="return isNumberKey(event);" />
-                    <select class="Input" name="donation_currency">
-                        <option class="Select-option" value="CNY"><?= Lang::get('user.cny') ?></option>
-                        <option class="Select-option" value="BTC"><?= Lang::get('user.btc') ?></option>
-                    </select>
-                </td>
-            </tr>
-            <tr class="Form-row">
-                <td class="Form-label"><?= Lang::get('user.reason') ?>:</td>
-                <td class="Form-inputs"><input class="Input wide_input_text" type="text" name="donation_reason" /></td>
-            </tr>
-            <tr class="Form-row">
-                <td align="right" colspan="2">
-                    <input class="Button" type="submit" name="donor_points_submit" value="Add donor points" />
-                </td>
-            </tr>
-        </table>
-
-        <table class="TableDonorPoints Table Form-rowList" id="donor_points_box">
-            <tr class="Form-rowHeader">
-                <td colspan="3" data-tooltip='<?= Lang::get('user.donor_system_modify_values_title') ?>'><?= Lang::get('user.donor_system_modify_values') ?></td>
-            </tr>
-            <tr class="Form-row">
-                <td class="Form-label" data-tooltip="<?= Lang::get('user.active_points_title') ?>"><?= Lang::get('user.active_points') ?>:</td>
-                <td class="Form-inputs"><input class="Input is-small" type="text" name="donor_rank" onkeypress="return isNumberKey(event);" value="<?= $Rank ?>" /></td>
-            </tr>
-            <tr class="Form-row">
-                <td class="Form-label" data-tooltip="<?= Lang::get('user.total_points_title') ?>"><?= Lang::get('user.total_points') ?>:</td>
-                <td class="Form-inputs"><input class="Input is-small" type="text" name="total_donor_rank" onkeypress="return isNumberKey(event);" value="<?= $TotalRank ?>" /></td>
-            </tr>
-            <tr class="Form-row">
-                <td class="Form-label"><?= Lang::get('user.reason') ?>:</td>
-                <td class="Form-inputs"><input class="Input wide_input_text" type="text" name="reason" /></td>
-            </tr>
-            <tr class="Form-row">
-                <td align="right" colspan="2">
-                    <input class="Button" type="submit" name="donor_values_submit" value="Change point values" />
-                </td>
-            </tr>
-        </table>
+        <tr class="Form-rowSubHeader">
+            <td colspan="2"><?= t('server.user.donor_system_add_points') ?></td>
+        </tr>
+        <tr class="Form-row">
+            <td class="Form-label"><?= t('server.user.value') ?>:</td>
+            <td class="Form-inputs">
+                <input class="Input is-small" type="text" name="donation_value" onkeypress="return isNumberKey(event);" />
+                <select class="Input" name="donation_currency">
+                    <option class="Select-option" value="CNY"><?= t('server.user.cny') ?></option>
+                    <option class="Select-option" value="BTC"><?= t('server.user.btc') ?></option>
+                </select>
+            </td>
+        </tr>
+        <tr class="Form-row">
+            <td class="Form-label"><?= t('server.user.reason') ?>:</td>
+            <td class="Form-inputs"><input class="Input wide_input_text" type="text" name="donation_reason" /></td>
+        </tr>
         <?
     }
 
@@ -60,37 +30,41 @@ class DonationsView {
         ?>
             <div class="SidebarItemUserDonorStats SidebarItem Box">
                 <div class="SidebarItem-header Box-header">
-                    <?= Lang::get('user.donor_statistics') ?></div>
+                    <?= t('server.user.donor_statistics') ?></div>
                 <ul class="SidebarList SidebarItem-body Box-body">
                     <?
                     if ($IsDonor) {
                         if (check_perms('users_mod') || $OwnProfile) {
                     ?>
                             <li class="SidebarList-item">
-                                <?= Lang::get('user.total_donor_points') ?>: <?= $DonationInfo['TotRank'] ?>
+                                <?= t('server.user.total_donor_points') ?>: <?= $DonationInfo['TotRank'] ?>
                             </li class="SidebarList-item">
-                        <?              } ?>
+                        <?
+                        } ?>
                         <li class="SidebarList-item">
-                            <?= Lang::get('user.current_donor_rank') ?>: <?= self::render_rank($DonationInfo['Rank'], $DonationInfo['SRank']) ?>
+                            <?= t('server.user.current_donor_rank') ?>: <?= self::render_rank($DonationInfo['Rank'], $DonationInfo['SRank']) ?>
                         </li>
                         <li class="SidebarList-item">
-                            <?= Lang::get('user.current_special_donor_rank') ?>: <?= $DonationInfo['SRank'] ?>
+                            <?= t('server.user.current_special_donor_rank') ?>: <?= $DonationInfo['SRank'] ?>
                         </li>
 
                         <li class="SidebarList-item">
-                            <?= Lang::get('user.leaderboard_position') ?>: <?= $leadboardRank ?>
+                            <?= t('server.user.leaderboard_position') ?>: <?= $leadboardRank ?>
                         </li>
                         <li class="SidebarList-item">
-                            <?= Lang::get('user.last_donated') ?>: <?= time_diff($DonationInfo['Time']) ?>
+                            <?= t('server.user.last_donated') ?>: <?= time_diff($DonationInfo['Time']) ?>
                         </li>
                         <li class="SidebarList-item">
-                            <?= Lang::get('user.rank_expires') ?>: <?= ($DonationInfo['ExpireTime']) ?>
+                            <?= t('server.user.rank_expires') ?>: <?= ($DonationInfo['ExpireTime']) ?>
                         </li>
-                    <?          } else { ?>
+                    <?
+                    } else {
+                    ?>
                         <li class="SidebarList-item">
-                            <?= Lang::get('user.rank_expires') ?>
+                            <?= t('server.common.no_results') ?>
                         </li>
-                    <?          } ?>
+                    <?
+                    } ?>
                 </ul>
             </div>
             <?
@@ -101,12 +75,21 @@ class DonationsView {
         for ($i = 1; $i <= 4; $i++) {
             if ($EnabledRewards['HasProfileInfo' . $i] && $ProfileRewards['ProfileInfo' . $i]) {
             ?>
-                <div class="Box">
-                    <div class="Box-header">
-                        <span><?= !empty($ProfileRewards['ProfileInfoTitle' . $i]) ? display_str($ProfileRewards['ProfileInfoTitle' . $i]) : "Extra Profile " . ($i + 1) ?></span>
-                        <span style="float: right;"><a href="#" onclick="$('#profilediv_<?= $i ?>').gtoggle(); this.innerHTML = (this.innerHTML == '<?= Lang::get('global.hide') ?>' ? '<?= Lang::get('global.show') ?>' : '<?= Lang::get('global.hide') ?>'); return false;" class="brackets"><?= Lang::get('global.hide') ?></a></span>
+                <div class="Post">
+                    <div class="Post-header">
+                        <div class="Post-headerLeft">
+                            <div class="Post-headerTitle">
+                                <span><?= !empty($ProfileRewards['ProfileInfoTitle' . $i]) ? display_str($ProfileRewards['ProfileInfoTitle' . $i]) : "Extra Profile " . ($i + 1) ?></span>
+                            </div>
+                        </div>
+                        <div class="Post-headerActions">
+                            <a href="#" onclick="globalapp.toggleAny(event, '#profilediv_<?= $i ?>');return false;">
+                                <span class="u-toggleAny-show u-hidden"><?= t('server.common.show') ?></span>
+                                <span class="u-toggleAny-hide"><?= t('server.common.hide') ?></span>
+                            </a>
+                        </div>
                     </div>
-                    <div class="Box-body HtmlText PostArticle profileinfo" id="profilediv_<?= $i ?>">
+                    <div class="Post-body HtmlText PostArticle profileinfo" id="profilediv_<?= $i ?>">
                         <?= Text::full_format($ProfileRewards['ProfileInfo' . $i]) ?>
                     </div>
                 </div>
@@ -120,63 +103,64 @@ class DonationsView {
             return;
         }
         ?>
-        <div class="Box" id="donation_history_box">
-            <div class="Box-header">
-                <?= Lang::get('user.donation_history') ?> <a href="#" onclick="$('#donation_history').gtoggle(); return false;" class="brackets"><?= Lang::get('user.view') ?></a>
+        <div class="Group" id="donation_history_box">
+            <div class="Group-header">
+                <div class="Group-headerTitle">
+                    <?= t('server.user.donation_history') ?>
+                </div>
+
+                <div class="Group-headerActions">
+                    <a href="#" onclick="globalapp.toggleAny(event, '#donation_history');return false;">
+                        <span class="u-toggleAny-show"><?= t('server.common.show') ?></span>
+                        <span class="u-toggleAny-hide u-hidden"><?= t('server.common.hide') ?></span>
+                    </a>
+                </div>
             </div>
-            <? $Row = 'b'; ?>
-            <div class="Box-body TableContainer hidden" id="donation_history">
+            <div class="Group-body TableContainer u-hidden" id="donation_history">
                 <table class="Table">
                     <tbody>
                         <tr class="Table-rowHeader">
                             <td class="Table-cell">
-                                <strong><?= Lang::get('user.source') ?></strong>
+                                <strong><?= t('server.user.source') ?></strong>
+                            </td>
+                            <td class="Table-cell ">
+                                <strong><?= t('server.user.date') ?></strong>
                             </td>
                             <td class="Table-cell">
-                                <strong><?= Lang::get('user.date') ?></strong>
+                                <strong><?= t('server.user.amount_cny') ?></strong>
                             </td>
-                            <td class="Table-cell">
-                                <strong><?= Lang::get('user.amount_cny') ?></strong>
+                            <td class="Table-cell Table-cellRight">
+                                <strong><?= t('server.user.added_points') ?></strong>
                             </td>
-                            <td class="Table-cell">
-                                <strong><?= Lang::get('user.added_points') ?></strong>
+                            <td class="Table-cell Table-cellRight">
+                                <strong><?= t('server.user.total_points') ?></strong>
                             </td>
-                            <td class="Table-cell">
-                                <strong><?= Lang::get('user.total_points') ?></strong>
-                            </td>
-                            <td class="Table-cell">
-                                <strong><?= Lang::get('user.email') ?></strong>
-                            </td>
-                            <td class="Table-cell" style="width: 30%;">
-                                <strong><?= Lang::get('user.reason') ?></strong>
+                            <td class="Table-cell Table-cellRight" style="width: 30%;">
+                                <strong><?= t('server.user.reason') ?></strong>
                             </td>
                         </tr>
                         <? foreach ($DonationHistory as $Donation) { ?>
-                            <tr class="row<?= $Row ?>">
-                                <td>
+                            <tr class="Table-row">
+                                <td class="Table-cell">
                                     <?= display_str($Donation['Source']) ?> (<?= Users::format_username($Donation['AddedBy']) ?>)
                                 </td>
-                                <td>
+                                <td class="Table-cell">
                                     <?= $Donation['Time'] ?>
                                 </td>
-                                <td>
+                                <td class="Table-cell">
                                     <?= $Donation['Amount'] ?>
                                 </td>
-                                <td>
+                                <td class="Table-cell Table-cellRight">
                                     <?= $Donation['Rank'] ?>
                                 </td>
-                                <td>
+                                <td class="Table-cell Table-cellRight">
                                     <?= $Donation['TotalRank'] ?>
                                 </td>
-                                <td>
-                                    <?= display_str($Donation['Email']) ?>
-                                </td>
-                                <td>
+                                <td class="Table-cell Table-cellRight">
                                     <?= display_str($Donation['Reason']) ?>
                                 </td>
                             </tr>
                         <?
-                            $Row = $Row === 'b' ? 'a' : 'b';
                         }
                         ?>
                     </tbody>
@@ -187,6 +171,7 @@ class DonationsView {
     }
 
     public static function render_rank($rank, $specialRank, $ShowOverflow = true) {
-        echo Donation::rankLabel($rank, $specialRank, $ShowOverflow);
+        $donate = new Donation;
+        echo $donate->rankLabel($rank, $specialRank, $ShowOverflow);
     }
 }

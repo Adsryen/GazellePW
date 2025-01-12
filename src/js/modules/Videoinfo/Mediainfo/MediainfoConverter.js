@@ -1,4 +1,5 @@
 import { uniq, compact } from 'lodash-es'
+import { AUDIO_OPTION, VIDEO_OPTION } from '../utils'
 
 export default class MediainfoConverter {
   convert(info) {
@@ -8,6 +9,8 @@ export default class MediainfoConverter {
     const resolution = this.extractResolution(info) // '720p' | ['1', '2']
     const container = this.extractContainer(info, resolution)
     const subtitles = this.extractSubtitle(info) // ['Chinese Simplified']
+    const videoOption = this.extractVideoOption(info)
+    const audioOption = this.extractAudioOption(info)
     return {
       source,
       codec,
@@ -15,7 +18,52 @@ export default class MediainfoConverter {
       resolution,
       container,
       subtitles,
+      videoOption,
+      audioOption,
     }
+  }
+
+  extractVideoOption(info) {
+    let options = new Set()
+    for (const v of info['video']) {
+      const hdrFormat = v['hdr format']
+      const bitDepth = v['bit depth']
+      if (hdrFormat && hdrFormat.match(/Dolby Vision/)) {
+        options.add(VIDEO_OPTION.DOLBYVISION)
+      }
+      if (hdrFormat && hdrFormat.match(/HDR10\+/)) {
+        options.add(VIDEO_OPTION.HDR10PLUS)
+      }
+      if (hdrFormat && hdrFormat.match(/HDR/)) {
+        options.add(VIDEO_OPTION.HDR10)
+      }
+      if (bitDepth && bitDepth.match(/10 bits/)) {
+        options.add(VIDEO_OPTION.BIT10)
+      }
+    }
+    return Array.from(options)
+  }
+
+  extractAudioOption(info) {
+    let options = new Set()
+    for (const a of info['audio']) {
+      const channels = a['channel(s)']
+      const commercialName = a['commercial name']
+      const format = a['format']
+      if (channels && channels.match(/6 channels/)) {
+        options.add(AUDIO_OPTION.CHANNEL51)
+      }
+      if (channels && channels.match(/8 channels/)) {
+        options.add(AUDIO_OPTION.CHANNEL71)
+      }
+      if (commercialName && commercialName.match(/Atmos/)) {
+        options.add(AUDIO_OPTION.DOLBYATMOS)
+      }
+      if (format && format.match(/DTS XLL X/)) {
+        options.add(AUDIO_OPTION.DTSX)
+      }
+    }
+    return Array.from(options)
   }
 
   extractSource(info) {
@@ -115,22 +163,18 @@ export default class MediainfoConverter {
           ((width === '1920' || (width < 1920 && height === '1080')) &&
             (scanType === 'Interlaced' || scanType === 'MBAFF'))
         ? '1080i'
-        : /1080p/i.test(completeName) ||
-          width === '1920' ||
-          (width < 1920 && height === '1080')
+        : /1080p/i.test(completeName) || width === '1920' || (width < 1920 && height === '1080')
         ? '1080p'
-        : /720p/i.test(completeName) ||
-          width === '1280' ||
-          (width < 1280 && height === '720')
+        : /720p/i.test(completeName) || width === '1280' || (width < 1280 && height === '720')
         ? '720p'
         : width === '1024'
         ? '576p'
+        : standard === 'NTSC'
+        ? 'NTSC'
         : width === '854' || height === '480'
         ? '480p'
         : standard === 'PAL'
         ? 'PAL'
-        : standard === 'NTSC'
-        ? 'NTSC'
         : 'Other'
 
     if (resolution === 'Other' && width && height) {
@@ -144,13 +188,15 @@ export default class MediainfoConverter {
     const texts = info['text']
     const subtitles = []
     for (const text of texts) {
-      const language = text['language'] || text['title']
+      let language = text['language'] || text['title']
       if (!language) {
         continue
       }
       let extra = ''
-      if (language === 'Chinese') {
+      if (language.match(/chinese|mandarin/i)) {
+        language = 'Chinese'
         const title = compact([text['language'], text['title']]).join('\n')
+        console.log(title)
         extra = title.match(/traditional|繁|cht/i)
           ? ' Traditional'
           : title.match(/simplified|简|chs/i)

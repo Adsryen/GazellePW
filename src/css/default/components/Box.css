@@ -6,33 +6,56 @@ Box              // box with header
 */
 
 .BoxBody {
-  background: var(--Box-background);
   color: var(--Box-color);
-  border: var(--Box-border);
-  border-radius: var(--global-borderRadius);
   padding: var(--global-space-default);
   word-break: break-word;
   word-wrap: break-word;
-}
-
-.Box {
   background: var(--Box-background);
-  color: var(--Box-color);
   border: var(--Box-border);
   border-radius: var(--global-borderRadius);
 }
 
+.Box {
+  color: var(--Box-color);
+  background: var(--Box-background);
+  border: var(--Box-border);
+  border-radius: var(--global-borderRadius);
+}
+
+.BoxList {
+  display: flex;
+  gap: var(--global-space-default);
+  flex-direction: column;
+  padding-top: var(--global-space-default);
+  padding-bottom: var(--global-space-default);
+}
+
+.Box .Box-headerTitle {
+  display: inline;
+  font-size: var(--global-fontSize-lg);
+  font-weight: bold;
+}
+
+.Box .Box-headerLeft {
+  display: inline;
+}
+
 .Box-header {
-  background: var(--Box-header-background);
   color: var(--Box-header-color);
   border-bottom: var(--Box-border);
+  background: var(--Box-header-background);
   border-top-left-radius: var(--global-borderRadius);
   border-top-right-radius: var(--global-borderRadius);
-  padding: 5px 10px;
+  padding: var(--global-space-sm);
+  display: flex;
+}
+
+.Box-headerActions {
+  margin-left: auto;
 }
 
 .Box-body {
-  padding: var(--global-space-default);
+  padding: var(--global-space-sm);
   word-break: break-word;
   word-wrap: break-word;
 }

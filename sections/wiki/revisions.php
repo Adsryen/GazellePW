@@ -13,24 +13,33 @@ if ($Edit > $LoggedUser['EffectiveClass']) {
     error(403);
 }
 
-View::show_header("Revisions of " . $Title, '', 'PageWikiRevision');
+View::show_header(t('server.wiki.revision_history', ['Values' => [
+    $Title
+]]), '', 'PageWikiRevision');
 ?>
 <div class="LayoutBody">
     <div class="BodyHeader">
-        <h2 class="BodyHeader-nav"><?= Lang::get('wiki.revision_history_before') ?><a href="wiki.php?action=article&amp;id=<?= $ArticleID ?>"><?= $Title ?></a><?= Lang::get('wiki.revision_history_after') ?></h2>
+        <h2 class="BodyHeader-nav">
+            <?= t('server.wiki.revision_history', ['Values' => [
+                "<a href='wiki.php?action=article&amp;id=${ArticleID}'>${Title}</a>"
+            ]]) ?>
+        </h2>
     </div>
-    <form action="wiki.php" method="get">
-        <input type="hidden" name="action" id="action" value="<? Lang::get('wiki.compare') ?>" />
+    <form class="BodyContent" action="wiki.php" method="get">
+        <input type="hidden" name="action" id="action" value="compare" />
         <input type="hidden" name="id" id="id" value="<?= $ArticleID ?>" />
+        <div>
+            <button class="Button" type="submit" value="Compare"><?= t('server.wiki.compare') ?></button>
+        </div>
         <div class="TableContainer">
             <table class="TableWikiRevision Table">
                 <tr class="Table-rowHeader">
-                    <td class="Table-cell"><?= Lang::get('wiki.history_revision') ?></td>
-                    <td class="Table-cell"><?= Lang::get('wiki.history_title') ?></td>
-                    <td class="Table-cell"><?= Lang::get('wiki.history_author') ?></td>
-                    <td class="Table-cell"><?= Lang::get('wiki.history_age') ?></td>
-                    <td class="Table-cell"><?= Lang::get('wiki.history_old') ?></td>
-                    <td class="Table-cell"><?= Lang::get('wiki.history_new') ?></td>
+                    <td class="Table-cell"><?= t('server.wiki.history_revision') ?></td>
+                    <td class="Table-cell"><?= t('server.wiki.history_title') ?></td>
+                    <td class="Table-cell"><?= t('server.wiki.history_author') ?></td>
+                    <td class="Table-cell"><?= t('server.wiki.history_age') ?></td>
+                    <td class="Table-cell"><?= t('server.wiki.history_old') ?></td>
+                    <td class="Table-cell"><?= t('server.wiki.history_new') ?></td>
                 </tr>
                 <tr class="Table-row">
                     <td class="Table-cell"><?= $Revision ?></td>
@@ -62,9 +71,7 @@ View::show_header("Revisions of " . $Title, '', 'PageWikiRevision');
                 <? } ?>
             </table>
         </div>
-        <div class="center">
-            <input class="Button" type="submit" value="Compare" />
-        </div>
+
     </form>
 </div>
 <? View::show_footer(); ?>

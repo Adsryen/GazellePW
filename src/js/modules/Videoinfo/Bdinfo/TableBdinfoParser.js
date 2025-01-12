@@ -1,6 +1,6 @@
 import Debug from 'debug'
 import { chunk, zipObject } from 'lodash-es'
-import { splitIntoLines, splitIntoSections } from '../utils'
+import { splitIntoLines, splitIntoBDInfoSections } from '../utils'
 import { VideinfoTableSpaceError } from '../errors'
 
 const debug = Debug('mediainfo')
@@ -12,9 +12,15 @@ export default class TableBdinfoParser {
       text = `DISC INFO:\n\n${text}`
     }
 
-    const sections = splitIntoSections(text)
+    let sections = splitIntoBDInfoSections(text)
+    sections = sections.filter((v) => {
+      if (v.startsWith('(*)')) {
+        return false
+      }
+      return true
+    })
     const chunks = chunk(sections, 2)
-    // console.log({ chunks })
+    console.log({ chunks })
     debug('CHUNKS', chunks)
 
     const result = {
@@ -25,26 +31,11 @@ export default class TableBdinfoParser {
       SUBTITLES: [],
     }
     for (const [rawSectionName, sectionBody] of chunks) {
-      const sectionName = rawSectionName.replace(':', '')
-      if (
-        [
-          'VIDEO',
-          'AUDIO',
-          'SUBTITLES',
-          'FILES',
-          'CHAPTERS',
-          'STREAM DIAGNOSTICS',
-        ].includes(sectionName)
-      ) {
-        const items = this.splitTable(sectionBody)
+      const sectionName = rawSectionName.replace(':', '').toUpperCase()
+      if (['VIDEO', 'AUDIO', 'SUBTITLES'].includes(sectionName)) {
+        const items = this.splitTable(sectionName, sectionBody)
         console.log('splitTable', { sectionName, items })
         result[sectionName] = items.map((v) => this.processItem(sectionName, v))
-      } else {
-        const lines = splitIntoLines(sectionBody)
-        for (const line of lines) {
-          const [key, value] = line.match(/^(.+?):(.*)$/).slice(1)
-          result[sectionName][key] = this.processValue(key, value.trim())
-        }
       }
     }
     return {
@@ -71,20 +62,18 @@ export default class TableBdinfoParser {
   processItem(sectionName, item) {
     switch (sectionName) {
       case 'VIDEO': {
-        const [resolution, frameRate, aspectRatio, note] =
-          item.Description.split(' / ')
+        const [resolution, frameRate, aspectRatio, ...rest] = item.Description.split(' / ')
         return {
           codec: item.Codec.replace(/ Video/, ''),
           bitrate: item.Bitrate,
           resolution,
           frameRate,
           aspectRatio,
-          note,
+          note: rest.join(' / ').trim(),
         }
       }
       case 'AUDIO': {
-        const [channels, sampleRate, bitrate, ...rest] =
-          item.Description.split(' / ')
+        const [channels, sampleRate, bitrate, ...rest] = item.Description.split(' / ')
         return {
           codec: item.Codec,
           language: item.Language,
@@ -104,17 +93,32 @@ export default class TableBdinfoParser {
     }
   }
 
-  splitTable(text) {
+  splitTable(name, text) {
     const result = []
     // eslint-disable-next-line no-unused-vars
     const [header, seperator, ...rest] = splitIntoLines(text)
-    const names = header.split(/ {5,}/)
+    const names = header.split(/ {1,}/)
     if (names.length === 1) {
       throw new VideinfoTableSpaceError('BDInfoParser: Table空格格式不支持')
     }
-    for (const line of rest) {
-      const cells = line.split(/ {5,}/)
-      result.push(zipObject(names, cells))
+    switch (name) {
+      case 'VIDEO':
+        for (const line of rest) {
+          result.push(zipObject(names, line.match(/(.*?) *([0-9.\(\)]* kbps) *(.*)/).slice(1)))
+        }
+        break
+      case 'AUDIO':
+        for (const line of rest) {
+          result.push(zipObject(names, line.match(/(.*?) *([a-zA-Z ]*[a-zA-Z]) *([0-9.]* kbps) *(.*)/).slice(1)))
+        }
+        break
+      case 'SUBTITLES':
+        for (const line of rest) {
+          result.push(
+            zipObject(names, line.match(/(Presentation Graphics) *([a-zA-Z ]*[a-zA-Z]) *([0-9.]* kbps) *(.*)/).slice(1))
+          )
+        }
+        break
     }
     return result
   }

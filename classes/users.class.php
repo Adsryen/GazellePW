@@ -80,10 +80,17 @@ class Users {
         $UserStats = $Cache->get_value('user_stats_' . $UserID);
         if (!is_array($UserStats)) {
             $DB->query("
-			SELECT Uploaded AS BytesUploaded, Downloaded AS BytesDownloaded, BonusPoints, RequiredRatio
-			FROM users_main
-			WHERE ID = '$UserID'");
+                SELECT Uploaded AS BytesUploaded, Downloaded AS BytesDownloaded, BonusPoints, RequiredRatio
+                FROM users_main
+                WHERE ID = '$UserID'
+            ");
             $UserStats = $DB->next_record(MYSQLI_ASSOC);
+            $UserStats = array_merge($UserStats, [
+                'BytesUploaded' => (int) $UserStats['BytesUploaded'],
+                'BytesDownloaded' => (int) $UserStats['BytesDownloaded'],
+                'BonusPoints' => (float) $UserStats['BonusPoints'],
+                'RequiredRatio' => (float) $UserStats['RequiredRatio'],
+            ]);
             $Cache->cache_value('user_stats_' . $UserID, $UserStats, 3600);
         }
         return $UserStats;
@@ -152,7 +159,7 @@ class Users {
                     'Found' => false,
                     'Warned' => '0000-00-00 00:00:00',
                     'Avatar' => '',
-                    'Lang' => 'chs',
+                    'Lang' => Lang::DEFAULT_LANG,
                     'Enabled' => 0,
                     'Title' => '',
                     'CatchupTime' => 0,
@@ -161,7 +168,7 @@ class Users {
                     'Class' => 0
                 );
             } else {
-                $UserInfo = G::$DB->next_record(MYSQLI_ASSOC, array('Paranoia', 'Title'));
+                $UserInfo = G::$DB->next_record(MYSQLI_ASSOC, false);
                 $UserInfo['CatchupTime'] = strtotime($UserInfo['CatchupTime']);
                 $UserInfo['Paranoia'] = unserialize_array($UserInfo['Paranoia']);
                 if ($UserInfo['Paranoia'] === false) {
@@ -249,7 +256,9 @@ class Users {
 					i.TGID,
 					m.FLTokens,
 					m.PermissionID,
-                    i.SettingTorrentTitle
+                    i.SettingTorrentTitle,
+                    i.JoinDate,
+                    m.LastAccess
 				FROM users_main AS m
 					INNER JOIN users_info AS i ON i.UserID = m.ID
 				WHERE m.ID = '$UserID'");
@@ -356,6 +365,11 @@ class Users {
         return array(
             'CoverArt' => true,
             'AutoSubscribe' => true,
+            'ShowHotMovieOnHomePage' => true,
+            'TorrentBrowseView' => 'default',
+            'CollageTorrentView' => 'default',
+            'PersonalTorrentView' => 'default',
+            'Top10TorrentView' => 'default',
         );
     }
 
@@ -416,11 +430,11 @@ class Users {
      * @param boolean $Default Returns the default list if true
      */
     public static function release_order(&$SiteOptions, $Default = false) {
-        $RT = Lang::get('torrents.release_types') + array(
-            1024 => Lang::get('artist.1024'),
-            1023 => Lang::get('artist.1023'),
-            1022 => Lang::get('artist.1022'),
-            1021 => Lang::get('artist.1021')
+        $RT = t('server.torrents.release_types') + array(
+            1024 => t('server.artist.1024'),
+            1023 => t('server.artist.1023'),
+            1022 => t('server.artist.1022'),
+            1021 => t('server.artist.1021')
         );
 
         if ($Default || empty($SiteOptions['SortHide'])) {
@@ -530,18 +544,7 @@ class Users {
 
         // This array is a hack that should be made less retarded, but whatevs
         //                        PermID => ShortForm
-        $SecondaryClasses = array(
-            '23' => 'FLS', // First Line Support
-            '30' => 'IN', // Interviewer
-            '31' => 'TC', // Torrent Celebrity
-            '32' => 'D', // Designer
-            '33' => 'ST', // Security Team
-            '37' => 'AR', // Archive Team
-            '36' => 'AT', // Alpha Team
-            '38' => 'CT', // Charlie Team
-            '39' => 'DT', // Delta Team
-            '56' => 'TI',
-        );
+        $SecondaryClasses =  CONFIG['SECONDARY_CLASS'];
 
         if ($UserID == 0) {
             return 'System';
@@ -619,7 +622,7 @@ class Users {
         }
 
         if ($IsEnabled && $UserInfo['Enabled'] == 2) {
-            $Str .= '<a href="rules.php" data-tooltip="' . Lang::get('user.disabled') . '"><i class="disabled_flag" aria-hidden="true">' . icon("User/disabled") . '</i></a>';
+            $Str .= '<a href="rules.php" data-tooltip="' . t('server.user.disabled') . '"><i class="disabled_flag" aria-hidden="true">' . icon("User/disabled") . '</i></a>';
         } else if ($IsWarned && $IsEnabled) {
             if ($UserInfo['Warned'] != '0000-00-00 00:00:00') {
                 $Str .= '<a href="wiki.php?action=article&amp;id=114"'
@@ -755,7 +758,7 @@ class Users {
             );
         }
 
-        $TorrentList = Torrents::get_groups($GroupIDs);
+        $TorrentList = Torrents::get_groups($GroupIDs, true, false, true);
 
         return array($GroupIDs, $BookmarkData, $TorrentList);
     }
@@ -865,6 +868,32 @@ class Users {
         global $HeavyInfo;
         return empty($HeavyInfo['DisableAvatars']) || $HeavyInfo['DisableAvatars'] != 1;
     }
+
+    public static function get_release_group(int $UserID): ?array {
+        $Ret = [];
+        foreach (CONFIG['RELEASE_GROUP_MEMBER'] as $ID => $Members) {
+            foreach ($Members as $Member) {
+                if ($Member == $UserID) {
+                    $Ret[] = self::get_release_group_by_id($ID);
+                }
+            }
+        }
+        return $Ret;
+    }
+
+    public static function get_all_release_groups(): ?array {
+        return CONFIG['RELEASE_GROUP'];
+    }
+
+    public static function get_release_group_by_id($ReleaseGroupID): ?array {
+        foreach (CONFIG['RELEASE_GROUP'] as $ReleaseGroup) {
+            if ($ReleaseGroup['ID'] == $ReleaseGroupID) {
+                return $ReleaseGroup;
+            }
+        }
+        return [];
+    }
+
     /**
      * Checks whether user has autocomplete enabled
      *
@@ -917,17 +946,13 @@ class Users {
 				ResetExpires = '" . time_plus(60 * 60) . "'
 			WHERE UserID = '$UserID'");
 
-        require(CONFIG['SERVER_ROOT'] . '/classes/templates.class.php');
-        $TPL = new TEMPLATE;
-        $TPL->open(CONFIG['SERVER_ROOT'] . '/templates/password_reset.tpl'); // Password reset template
-
-        $TPL->set('Username', $Username);
-        $TPL->set('ResetKey', $ResetKey);
-        $TPL->set('IP', $_SERVER['REMOTE_ADDR']);
-        $TPL->set('SITE_NAME', CONFIG['SITE_NAME']);
-        $TPL->set('SITE_URL', site_url(false));
-
-        Misc::send_email($Email, '重置你 ' . CONFIG['SITE_NAME'] . ' 账号的密码 | Password reset information for ' . CONFIG['SITE_NAME'],  $TPL->get(), 'noreply', 'text/html');
+        Misc::send_email_with_tpl($Email, 'password_reset', [
+            'Username' => $Username,
+            'ResetKey' => $ResetKey,
+            'IP' => $_SERVER['REMOTE_ADDR'],
+            'SITE_NAME' => CONFIG['SITE_NAME'],
+            'SITE_URL' => site_url(false),
+        ], 'text/html');
     }
 
     /**
@@ -977,5 +1002,176 @@ class Users {
         }
         $info = self::user_info($ID);
         return $info['EffectiveClass'] >= $MinClass;
+    }
+
+    public $UserID;
+
+    function __construct($UserID) {
+        $this->UserID = $UserID;
+    }
+
+    public function seedingLight() {
+        global $DB;
+        $UserID = $this->UserID;
+        $DB->query("
+            SELECT COUNT(x.uid) AS seedingCount
+            FROM xbt_files_users AS x
+                INNER JOIN torrents AS t ON t.ID = x.fid
+            WHERE x.uid = '$UserID'
+                AND x.remaining = 0
+        ");
+        $result = $DB->next_record(MYSQLI_ASSOC);
+        return [
+            'seedingCount' => (int) $result['seedingCount']
+        ];
+    }
+
+    public function seedingHeavy() {
+        global $DB;
+        $UserID = $this->UserID;
+        $DB->prepared_query("
+            SELECT
+                COUNT(xfu.uid) as seedingCount,
+                SUM(t.Size) as seedingSize,
+                SUM(IFNULL(t.Size / (1024 * 1024 * 1024) * 1 * (
+                    0.025 + (
+                        (0.06 * LN(1 + (xfh.seedtime / (24)))) / (POW(GREATEST(t.Seeders, 1), 0.6))
+                    )
+                ), 0)) AS seedingBonusPointsPerHour
+            FROM
+                (SELECT DISTINCT uid,fid FROM xbt_files_users WHERE active=1 AND remaining=0 AND mtime > unix_timestamp(NOW() - INTERVAL 1 HOUR) AND uid = ?) AS xfu
+                JOIN xbt_files_history AS xfh ON xfh.uid = xfu.uid AND xfh.fid = xfu.fid
+                JOIN torrents AS t ON t.ID = xfu.fid
+            WHERE
+                xfu.uid = ?
+        ", $UserID, $UserID);
+        $result = $DB->next_record(MYSQLI_ASSOC);
+        return [
+            'seedingCount' => (int) $result['seedingCount'],
+            'seedingSize' => (float) $result['seedingSize'],
+            'seedingBonusPointsPerHour' => (float) $result['seedingBonusPointsPerHour']
+        ];
+    }
+
+    public function leeching() {
+        global $DB;
+        $UserID = $this->UserID;
+        $DB->query("
+            SELECT COUNT(x.uid) AS leechingCount
+            FROM xbt_files_users AS x
+                INNER JOIN torrents AS t ON t.ID = x.fid
+            WHERE x.uid = '$UserID'
+                AND x.remaining > 0
+        ");
+        $result = $DB->next_record(MYSQLI_ASSOC);
+        return [
+            'leechingCount' => (int) $result['leechingCount']
+        ];
+    }
+
+    public function snatched() {
+        global $DB;
+        $UserID = $this->UserID;
+        $DB->query("
+            SELECT COUNT(x.uid) AS snatchedCount, COUNT(DISTINCT x.fid) as uniqueSnatchedCount
+            FROM xbt_snatched AS x
+                INNER JOIN torrents AS t ON t.ID = x.fid
+            WHERE x.uid = '$UserID'
+        ");
+        $result = $DB->next_record(MYSQLI_ASSOC);
+        return [
+            'snatchedCount' => (int) $result['snatchedCount'],
+            'uniqueSnatchedCount' => (int) $result['uniqueSnatchedCount']
+        ];
+    }
+
+    public function uploads() {
+        global $DB;
+        $UserID = $this->UserID;
+        $DB->query("
+            SELECT COUNT(t.ID) AS Uploads
+            FROM users_main AS u
+            LEFT JOIN torrents AS t ON t.UserID = u.ID
+            WHERE u.id = '$UserID'
+        ");
+        $result = $DB->next_record(MYSQLI_ASSOC);
+        return [
+            'uploadCount' => (int) $result['Uploads'],
+        ];
+    }
+    public static function get_nav_items(): array {
+        $list = G::$Cache->get_value("nav_items");
+        if (!$list) {
+            $QueryID = G::$DB->get_query_id();
+            G::$DB->prepared_query("
+                SELECT id, tag, title, target, tests, test_user, mandatory, initial
+                FROM nav_items");
+            $list = G::$DB->to_array("id", MYSQLI_ASSOC, false);
+            G::$Cache->cache_value("nav_items", $list, 0);
+            G::$DB->set_query_id($QueryID);
+        }
+        return $list;
+    }
+
+    public static function add_secondary_class($UserID, $Classes) {
+        foreach ($Classes as $PermID) {
+            $ClassChanges[] = $Classes[$PermID]['Name'];
+        }
+        $ClassChangeStr = implode(', ', $ClassChanges);
+        $Values = [];
+        foreach ($Classes as $PermID) {
+            $Values[] = $UserID;
+            $Values[] = $PermID;
+        }
+        if (in_array('31', $Classes)) {
+            Misc::send_pm_with_tpl($UserID, 'official_recruiter', ['SiteName' => CONFIG['SITE_NAME']]);
+        }
+        $sqltime = sqltime();
+        G::$DB->begin_transaction();
+        try {
+            G::$DB->prepared_query(
+                "INSERT INTO users_levels (UserID, PermissionID)
+			VALUES " . implode(', ', array_fill(0, count($Values) / 2, '(?, ?)')),
+                ...$Values
+            );
+            G::$DB->prepared_query("
+			UPDATE users_info AS ui
+			SET ui.AdminComment = CONCAT('$sqltime - Secondary classes added $ClassChangeStr.\n\n', ui.AdminComment)
+			WHERE ui.UserID = ?", $UserID);
+        } catch (Exception $e) {
+            G::$DB->rollback();
+            error_log($e);
+        }
+        G::$DB->commit();
+        G::$Cache->delete_value("user_info_$UserID");
+        G::$Cache->delete_value("user_info_heavy_$UserID");
+    }
+
+    public static function remove_secondary_class($UserID, $Classes) {
+        foreach ($Classes as $PermID) {
+            $ClassChanges[] = $Classes[$PermID]['Name'];
+        }
+        $ClassChangeStr = implode(', ', $ClassChanges);
+        $sqltime = sqltime();
+        G::$DB->begin_transaction();
+        try {
+            G::$DB->prepared_query(
+                "
+			DELETE FROM users_levels
+			WHERE UserID = '$UserID'
+				AND PermissionID IN (" . implode(', ', array_fill(0, count($Classes), '?')) . ")",
+                ...$Classes
+            );
+            G::$DB->prepared_query("
+        UPDATE users_info AS ui
+        SET ui.AdminComment = CONCAT('$sqltime - Secondary classes added $ClassChangeStr.\n\n', ui.AdminComment)
+        WHERE ui.UserID = ?", $UserID);
+        } catch (Exception $e) {
+            G::$DB->rollback();
+            error_log($e);
+        }
+        G::$DB->commit();
+        G::$Cache->delete_value("user_info_$UserID");
+        G::$Cache->delete_value("user_info_heavy_$UserID");
     }
 }

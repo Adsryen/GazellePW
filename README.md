@@ -1,6 +1,10 @@
-[中文](./README-ZH.md) | [Screenshot](https://raw.githubusercontent.com/Mosasauroidea/GazellePW/main/public/static/stylespreview/en-github-dark.png)
+[中文](./README-zh.md) | [Português](./README-pt.md) | [Screenshot](https://raw.githubusercontent.com/Mosasauroidea/GazellePW/main/public/static/stylespreview/en-github-dark.png)
+
+[Help us translate this project into your language!](./docs/en/i18n.md)
 
 # GazellePW
+
+[![Crowdin](https://badges.crowdin.net/gazellepw/localized.svg)](https://crowdin.com/project/gazellepw)
 
 GazellePW (GazellePosterWall) is a web framework geared towards private BitTorrent trackers. It's a **movie version** of Gazelle.
 
@@ -31,6 +35,7 @@ GazellePW (GazellePosterWall) is a web framework geared towards private BitTorre
   - Multiple Languages (English, Chinese etc)
   - mdx/yaml file format
   - Use service (Crowdin) to translate
+  - Support bilingual content
 - Image host: Local or [Minio](https://github.com/minio/minio)
 - Mail delivery type: SMTP or [Mailgun](https://www.mailgun.com/)
 - Additional torrents off: 25%, 50%, 75%
@@ -39,9 +44,9 @@ GazellePW (GazellePosterWall) is a web framework geared towards private BitTorre
 
 ## Documentation
 
-- [Getting Started](docs/Getting-Started.md)
-- [Frontend Development Guide](docs/Frontend-Development-Guide.md)
-- [Writting Markdown/MDX](docs/Writing-Markdown-Mdx.md)
+- [Getting Started](./docs/en/Getting-Started.md)
+- [Frontend Development Guide](./docs/en/Frontend-Development-Guide.md)
+- [Writting Markdown/MDX](./docs/en/Writing-Markdown-Mdx.md)
 
 ## Contributing
 

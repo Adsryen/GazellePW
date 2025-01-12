@@ -1,4 +1,5 @@
 <?php
+$GenreTags = Tags::get_genre_tag();
 $SphQL = new SphinxqlQuery();
 $SphQL->select('id, votes, bounty')->from('requests, requests_delta');
 
@@ -11,6 +12,11 @@ $SortOrders = array(
     'created' => 'timeadded',
     'random' => false
 );
+
+$RequestType = $_GET['request_type'];
+if (!empty($RequestType)) {
+    $SphQL->where("requesttype", $RequestType);
+}
 
 if (empty($_GET['order']) || !isset($SortOrders[$_GET['order']])) {
     $_GET['order'] = 'created';
@@ -49,10 +55,7 @@ if (!empty($_GET['userid'])) {
 $BookmarkView = false;
 
 if (empty($_GET['type'])) {
-    $Title = Lang::get('requests.requests');
-    if (empty($_GET['showall'])) {
-        $SphQL->where('visible', 1);
-    }
+    $Title = t('server.requests.requests');
 } else {
     switch ($_GET['type']) {
         case 'created':
@@ -60,10 +63,10 @@ if (empty($_GET['type'])) {
                 if (!check_paranoia('requestsvoted_list', $UserInfo['Paranoia'], $Perms['Class'], $UserInfo['ID'])) {
                     error(403);
                 }
-                $Title = Lang::get('requests.requests_created_by_before') . $UserInfo['Username'] . Lang::get('requests.requests_created_by_after');
+                $Title = t('server.requests.requests_created_by', ['Values' => [$UserInfo['Username']]]);
                 $SphQL->where('userid', $UserInfo['ID']);
             } else {
-                $Title = Lang::get('requests.my_requests');
+                $Title = t('server.requests.my_requests');
                 $SphQL->where('userid', $LoggedUser['ID']);
             }
             break;
@@ -72,10 +75,10 @@ if (empty($_GET['type'])) {
                 if (!check_paranoia('requestsvoted_list', $UserInfo['Paranoia'], $Perms['Class'], $UserInfo['ID'])) {
                     error(403);
                 }
-                $Title = Lang::get('requests.requests_voted_for_by_before') . $UserInfo['Username'] . Lang::get('requests.requests_voted_for_by_after');
+                $Title = t('server.requests.requests_voted_for_by', ['Values' => [$UserInfo['Username']]]);
                 $SphQL->where('voter', $UserInfo['ID']);
             } else {
-                $Title = Lang::get('requests.requests_i_have_voted_on');
+                $Title = t('server.requests.requests_i_have_voted_on');
                 $SphQL->where('voter', $LoggedUser['ID']);
             }
             break;
@@ -84,15 +87,15 @@ if (empty($_GET['type'])) {
                 if (!check_paranoia('requestsfilled_list', $UserInfo['Paranoia'], $Perms['Class'], $UserInfo['ID'])) {
                     error(403);
                 }
-                $Title = Lang::get('requests.requests_filled_by_before') . $UserInfo['Username'] . Lang::get('requests.requests_filled_by_after');
+                $Title = t('server.requests.requests_filled_by', ['Values' => [$UserInfo['Username']]]);
                 $SphQL->where('fillerid', $UserInfo['ID']);
             } else {
-                $Title = Lang::get('requests.requests_i_have_filled');
+                $Title = t('server.requests.requests_i_have_filled');
                 $SphQL->where('fillerid', $LoggedUser['ID']);
             }
             break;
         case 'bookmarks':
-            $Title = Lang::get('requests.bookmarks');
+            $Title = t('server.requests.bookmarks');
             $BookmarkView = true;
             $SphQL->where('bookmarker', $LoggedUser['ID']);
             break;
@@ -248,7 +251,6 @@ if (!empty($_GET['tags'])) {
     }
 
     $TagFilter = Tags::tag_filter_sph($SearchTags, $EnableNegation, $TagType);
-    $TagNames = $TagFilter['input'];
 
     if (!empty($TagFilter['predicate'])) {
         $SphQL->where_match($TagFilter['predicate'], 'taglist', false);
@@ -258,6 +260,7 @@ if (!empty($_GET['tags'])) {
 } else {
     $_GET['tags_type'] = 0;
 }
+$TagNames = $_GET['tags'];
 
 if (isset($SearchWords)) {
     $QueryParts = array();
@@ -359,28 +362,28 @@ View::show_header($Title, '', 'PageRequestHome');
         <div class="BodyNavLinks">
             <? if (!$BookmarkView) {
                 if (check_perms('site_submit_requests')) { ?>
-                    <a class="Link" href="requests.php?action=new"><?= Lang::get('requests.new_request') ?></a>
-                    <a class="Link" href="requests.php?type=created&show_filled=on"><?= Lang::get('requests.my_requests') ?></a>
+                    <a class="Link" href="requests.php?action=new"><?= t('server.requests.new_request') ?></a>
+                    <a class="Link" href="requests.php?type=created&show_filled=on"><?= t('server.requests.my_requests') ?></a>
                 <? } ?>
                 <? if (check_perms('site_vote')) { ?>
-                    <a class="Link" href="requests.php?type=voted"><?= Lang::get('requests.vote_requests') ?></a>
+                    <a class="Link" href="requests.php?type=voted"><?= t('server.requests.vote_requests') ?></a>
                 <? } ?>
-                <a class="Link" href="bookmarks.php?type=requests"><?= Lang::get('requests.bookmarked_requests') ?></a>
+                <a class="Link" href="bookmarks.php?type=requests"><?= t('server.requests.bookmarked_requests') ?></a>
             <?  } else { ?>
-                <a class="Link" href="bookmarks.php?type=torrents"><?= Lang::get('global.torrents') ?></a>
-                <a class="Link" href="bookmarks.php?type=artists"><?= Lang::get('global.artists') ?></a>
+                <a class="Link" href="bookmarks.php?type=torrents"><?= t('server.index.moviegroups') ?></a>
+                <a class="Link" href="bookmarks.php?type=artists"><?= t('server.common.artists') ?></a>
                 <? if (CONFIG['ENABLE_COLLAGES']) { ?>
-                    <a class="Link" href="bookmarks.php?type=collages"><?= Lang::get('requests.collages') ?></a>
+                    <a class="Link" href="bookmarks.php?type=collages"><?= t('server.requests.collages') ?></a>
                 <? } ?>
-                <a class="Link" href="bookmarks.php?type=requests"><?= Lang::get('global.requests') ?></a>
+                <a class="Link" href="bookmarks.php?type=requests"><?= t('server.common.requests') ?></a>
             <?  } ?>
         </div>
     </div>
     <?
     if ($BookmarkView && $NumResults === 0) {
     ?>
-        <div class="BoxBody" align="center">
-            <h2><?= Lang::get('requests.you_have_not_bookmarked_any_request') ?></h2>
+        <div class="center">
+            <div><?= t('server.requests.you_have_not_bookmarked_any_request') ?></div>
         </div>
     <?
     } else { ?>
@@ -398,57 +401,49 @@ View::show_header($Title, '', 'PageRequestHome');
                 <?      } ?>
                 <table class="Form-rowList">
                     <tr class="Form-row is-searchStr">
-                        <td class="Form-label"><?= Lang::get('requests.search_terms') ?>:</td>
+                        <td class="Form-label"><?= t('server.requests.search_terms') ?>:</td>
                         <td class="Form-inputs">
                             <input class="Input" type="text" name="search" size="75" value="<? if (isset($_GET['search'])) {
                                                                                                 echo display_str($_GET['search']);
                                                                                             } ?>" />
                         </td>
                     </tr>
-                    <tr class="Form-row is-tagFilter">
-                        <td class="Form-label"><?= Lang::get('requests.tags_comma') ?>:</td>
+                    <tr class="Form-row is-searchStr">
+                        <td class="Form-label"><?= t('server.requests.request_type') ?>:</td>
                         <td class="Form-inputs">
-                            <input class="Input" type="text" name="tags" id="tags" size="60" value="<?= !empty($TagNames) ? display_str($TagNames) : '' ?>" <? Users::has_autocomplete_enabled('other'); ?> />
-                            <div class="RadioGroup">
-                                <div class="Radio">
-                                    <input class="Input" type="radio" name="tags_type" id="tags_type0" value="0" <? Format::selected('tags_type', 0, 'checked') ?> />
-                                    <label class="Radio-label" for="tags_type0"><?= Lang::get('requests.any') ?> </label>
-                                </div>
-                                <div class="Radio">
-                                    <input class="Input" type="radio" name="tags_type" id="tags_type1" value="1" <? Format::selected('tags_type', 1, 'checked') ?> />
-                                    <label class="Radio-label" for="tags_type1"><?= Lang::get('requests.all') ?></label>
-                                </div>
+                            <div class="Checkbox">
+                                <input class="Input" type="checkbox" name="request_type[]" value="1" id="new_torrent" <?= empty($RequestType) || in_array(1, $RequestType) ? ' checked="checked" ' : '' ?> />
+                                <label class="Checkbox-label" for="new_torrent"><?= t('server.requests.new_torrent') ?></label>
+                            </div>
+                            <div class="Checkbox">
+                                <input class="Input" type="checkbox" name="request_type[]" value="2" id="seed_torrent" <?= empty($RequestType) || in_array(2, $RequestType) ? ' checked="checked" ' : '' ?> />
+                                <label class="Checkbox-label" for="new_torrent"><?= t('server.requests.seed_torrent') ?></label>
                             </div>
                         </td>
                     </tr>
                     <tr class="Form-row is-includeFilled">
                         <td class="Form-label">
-                            <label for="include_filled_box"><?= Lang::get('requests.include_filled') ?>:</label>
+                            <label for="include_filled_box"><?= t('server.requests.include_filled') ?>:</label>
                         </td>
                         <td class="Form-inputs">
                             <input class="Input" type="checkbox" id="include_filled_box" name="show_filled" <? if (!empty($_GET['show_filled']) || (!empty($_GET['type']) && $_GET['type'] === 'filled')) { ?> checked="checked" <? } ?> />
                         </td>
                     </tr>
-                    <tr class="Form-row is-includeOld">
-                        <td class="Form-label">
-                            <label for="include_old_box"><?= Lang::get('requests.include_old') ?>:</label>
-                        </td>
-                        <td class="Form-inputs">
-                            <input class="Input" type="checkbox" id="include_old_box" name="showall" <? if (!empty($_GET['showall'])) { ?> checked="checked" <? } ?> />
-                        </td>
-                    </tr>
                 </table>
                 <table class="Form-rowList">
                     <tr class="Form-row is-release">
-                        <td class="Form-label"><?= Lang::get('requests.release_list') ?></td>
+                        <td class="Form-label"><?= t('server.requests.release_list') ?></td>
                         <td class="Form-inputs">
-                            <input class="Input" type="checkbox" id="toggle_releases" onchange="globalapp.requestToggle('releases', 0);" <?= (!$Submitted || !empty($ReleaseArray) && count($ReleaseArray) === count($ReleaseTypes) ? ' checked="checked"' : '') ?> /> <label for="toggle_releases">All</label>
+                            <div class="Checkbox">
+                                <input class="Input" type="checkbox" id="toggle_releases" onchange="globalapp.allToggle('releases', 0);" <?= (!$Submitted || !empty($ReleaseArray) && count($ReleaseArray) === count($ReleaseTypes) ? ' checked="checked"' : '') ?> />
+                                <label for="toggle_releases"><?= t('server.forums.check_all') ?></label>
+                            </div>
                             <?
                             foreach ($ReleaseTypes as $Key) {
                             ?>
                                 <div class="Checkbox">
                                     <input class="Input" type="checkbox" name="releases[]" value="<?= $Key ?>" id="release_<?= $Key ?>" <?= (!$Submitted || (!empty($ReleaseArray) && in_array($Key, $ReleaseArray)) ? ' checked="checked" ' : '') ?> />
-                                    <label class="Checkbox-label" for="release_<?= $Key ?>"><?= Lang::get('torrents.release_types')[$Key] ?></label>
+                                    <label class="Checkbox-label" for="release_<?= $Key ?>"><?= t('server.torrents.release_types')[$Key] ?></label>
                                 </div>
                             <?
                             }
@@ -456,15 +451,11 @@ View::show_header($Title, '', 'PageRequestHome');
                         </td>
                     </tr>
                     <tr class="Form-row is-source">
-                        <td class="Form-label"><?= Lang::get('requests.source_list') ?>:</td>
+                        <td class="Form-label"><?= t('server.requests.source_list') ?>:</td>
                         <td class="Form-inputs">
                             <div class="Checkbox">
-                                <input class="Input" type="checkbox" id="toggle_source" onchange="globalapp.requestToggle('sources', 0);" <?= (!$Submitted || !empty($SourceArray) && count($SourceArray) === count($Sources) ? ' checked="checked"' : '') ?> />
-                                <label class="Checkbox-label" for="toggle_source">All</label>
-                            </div>
-                            <div class="Checkbox">
-                                <input class="Input" type="checkbox" id="source_strict" name="source_strict" <?= (!empty($_GET['source_strict']) ? ' checked="checked"' : '') ?> />
-                                <label class="Checkbox-label" for="source_strict">Only specified</label>
+                                <input class="Input" type="checkbox" id="toggle_source" onchange="globalapp.allToggle('source', 0);" <?= (!$Submitted || !empty($SourceArray) && count($SourceArray) === count($Sources) ? ' checked="checked"' : '') ?> />
+                                <label class="Checkbox-label" for="toggle_source"><?= t('server.forums.check_all') ?></label>
                             </div>
                             <?
                             foreach ($Sources as $Key => $Val) {
@@ -477,15 +468,11 @@ View::show_header($Title, '', 'PageRequestHome');
                         </td>
                     </tr>
                     <tr class="Form-row is-codec">
-                        <td class="Form-label"><?= Lang::get('requests.codec_list') ?>:</td>
+                        <td class="Form-label"><?= t('server.requests.codec_list') ?>:</td>
                         <td class="Form-inputs">
                             <div class="Checkbox">
-                                <input class="Input" type="checkbox" id="toggle_codec" onchange="globalapp.requestToggle('codec', 0);" <?= (!$Submitted || !empty($CodecArray) && count($CodecArray) === count($Codecs) ? ' checked="checked"' : '') ?> />
-                                <label class="Checkbox-label" for="toggle_codec">All</label>
-                            </div>
-                            <div class="Checkbox">
-                                <input class="Input" type="checkbox" id="codec_strict" name="codec_strict" <?= (!empty($_GET['codec_strict']) ? ' checked="checked"' : '') ?> />
-                                <label class="Checkbox-label" for="codec_strict">Only specified</label>
+                                <input class="Input" type="checkbox" id="toggle_codec" onchange="globalapp.allToggle('codec', 0);" <?= (!$Submitted || !empty($CodecArray) && count($CodecArray) === count($Codecs) ? ' checked="checked"' : '') ?> />
+                                <label class="Checkbox-label" for="toggle_codec"><?= t('server.forums.check_all') ?></label>
                             </div>
                             <?
                             foreach ($Codecs as $Key => $Val) {
@@ -498,15 +485,11 @@ View::show_header($Title, '', 'PageRequestHome');
                         </td>
                     </tr>
                     <tr class="Form-row is-container">
-                        <td class="Form-label"><?= Lang::get('requests.container_list') ?>:</td>
+                        <td class="Form-label"><?= t('server.requests.container_list') ?>:</td>
                         <td class="Form-inputs">
                             <div class="Checkbox">
-                                <input class="Input" type="checkbox" id="toggle_container" onchange="globalapp.requestToggle('container', 0);" <?= (!$Submitted || !empty($ContainerArray) && count($ContainerArray) === count($Containers) ? ' checked="checked"' : '') ?> />
-                                <label class="Checkbox-label" for="toggle_container">All</label>
-                            </div>
-                            <div class="Checkbox">
-                                <input class="Input" type="checkbox" id="container_strict" name="container_strict" <?= (!empty($_GET['container_strict']) ? ' checked="checked"' : '') ?> />
-                                <label class="Checkbox-label" for="container_strict">Only specified</label>
+                                <input class="Input" type="checkbox" id="toggle_container" onchange="globalapp.allToggle('container', 0);" <?= (!$Submitted || !empty($ContainerArray) && count($ContainerArray) === count($Containers) ? ' checked="checked"' : '') ?> />
+                                <label class="Checkbox-label" for="toggle_container"><?= t('server.forums.check_all') ?></label>
                             </div>
                             <?
                             foreach ($Containers as $Key => $Val) {
@@ -521,15 +504,11 @@ View::show_header($Title, '', 'PageRequestHome');
                         </td>
                     </tr>
                     <tr class="Form-row is-resolution">
-                        <td class="Form-label"><?= Lang::get('requests.resolution_list') ?>:</td>
+                        <td class="Form-label"><?= t('server.requests.resolution_list') ?>:</td>
                         <td class="Form-inputs">
                             <div class="Checkbox">
-                                <input class="Input" type="checkbox" id="toggle_resolution" onchange="globalapp.requestToggle('resolution', 0);" <?= (!$Submitted || !empty($ResolutionArray) && count($ResolutionArray) === count($Resolutions) ? ' checked="checked"' : '') ?> />
-                                <label class="Checkbox-label" for="toggle_resolution">All</label>
-                            </div>
-                            <div class="Checkbox">
-                                <input class="Input" type="checkbox" id="resolution_strict" name="resolution_strict" <?= (!empty($_GET['resolution_strict']) ? ' checked="checked"' : '') ?> />
-                                <label class="Checkbox-label" for="resolution_strict">Only specified</label>
+                                <input class="Input" type="checkbox" id="toggle_resolution" onchange="globalapp.allToggle('resolution', 0);" <?= (!$Submitted || !empty($ResolutionArray) && count($ResolutionArray) === count($Resolutions) ? ' checked="checked"' : '') ?> />
+                                <label class="Checkbox-label" for="toggle_resolution"><?= t('server.forums.check_all') ?></label>
                             </div>
                             <?
                             foreach ($Resolutions as $Key => $Val) {
@@ -547,7 +526,7 @@ View::show_header($Title, '', 'PageRequestHome');
             </div>
             <div class="SearchPageFooter">
                 <div class="SearchPageFooter-actions">
-                    <input class="Button" type="submit" value="<?= Lang::get('torrents.search_requests') ?>" />
+                    <input class="Button" type="submit" value="<?= t('server.common.search') ?>" />
                 </div>
             </div>
         </form>
@@ -563,28 +542,31 @@ View::show_header($Title, '', 'PageRequestHome');
             <table class="TableRequest Table" id="request_table" cellpadding="6" cellspacing="1" border="0" width="100%">
                 <tr class="Table-rowHeader">
                     <td class="Table-cell" style="width: 38%;">
-                        <?= Lang::get('requests.name') ?> / <a href="?order=year&amp;sort=<?= ($OrderBy === 'year' ? $NewSort : 'desc') ?>&amp;<?= $CurrentURL ?>"><?= Lang::get('requests.year') ?></a>
+                        <?= t('server.requests.name') ?> / <a href="?order=year&amp;sort=<?= ($OrderBy === 'year' ? $NewSort : 'desc') ?>&amp;<?= $CurrentURL ?>"><?= t('server.requests.year') ?></a>
                     </td>
                     <td class="Table-cell">
-                        <a href="?order=votes&amp;sort=<?= ($OrderBy === 'votes' ? $NewSort : 'desc') ?>&amp;<?= $CurrentURL ?>"><?= Lang::get('requests.votes') ?></a>
+                        <?= t('server.requests.request_type') ?>
                     </td>
                     <td class="Table-cell">
-                        <a href="?order=bounty&amp;sort=<?= ($OrderBy === 'bounty' ? $NewSort : 'desc') ?>&amp;<?= $CurrentURL ?>"><?= Lang::get('requests.bounty') ?></a>
+                        <a href="?order=votes&amp;sort=<?= ($OrderBy === 'votes' ? $NewSort : 'desc') ?>&amp;<?= $CurrentURL ?>"><?= t('server.requests.quick_vote') ?></a>
                     </td>
                     <td class="Table-cell">
-                        <a href="?order=filled&amp;sort=<?= ($OrderBy === 'filled' ? $NewSort : 'desc') ?>&amp;<?= $CurrentURL ?>"><?= Lang::get('requests.filled') ?></a>
+                        <a href="?order=bounty&amp;sort=<?= ($OrderBy === 'bounty' ? $NewSort : 'desc') ?>&amp;<?= $CurrentURL ?>"><?= t('server.requests.bounty') ?></a>
                     </td>
                     <td class="Table-cell">
-                        <?= Lang::get('requests.filled_by') ?>
+                        <a href="?order=filled&amp;sort=<?= ($OrderBy === 'filled' ? $NewSort : 'desc') ?>&amp;<?= $CurrentURL ?>"><?= t('server.requests.filled') ?></a>
                     </td>
                     <td class="Table-cell">
-                        <?= Lang::get('requests.add_by') ?>
+                        <?= t('server.requests.filled_by') ?>
                     </td>
                     <td class="Table-cell">
-                        <a href="?order=created&amp;sort=<?= ($OrderBy === 'created' ? $NewSort : 'desc') ?>&amp;<?= $CurrentURL ?>"><?= Lang::get('requests.created') ?></a>
+                        <?= t('server.requests.add_by') ?>
                     </td>
                     <td class="Table-cell">
-                        <a href="?order=lastvote&amp;sort=<?= ($OrderBy === 'lastvote' ? $NewSort : 'desc') ?>&amp;<?= $CurrentURL ?>"><?= Lang::get('requests.lastvote') ?></a>
+                        <a href="?order=created&amp;sort=<?= ($OrderBy === 'created' ? $NewSort : 'desc') ?>&amp;<?= $CurrentURL ?>"><?= t('server.requests.created') ?></a>
+                    </td>
+                    <td class="Table-cell">
+                        <a href="?order=lastvote&amp;sort=<?= ($OrderBy === 'lastvote' ? $NewSort : 'desc') ?>&amp;<?= $CurrentURL ?>"><?= t('server.requests.lastvote') ?></a>
                     </td>
                 </tr>
                 <?
@@ -607,7 +589,7 @@ View::show_header($Title, '', 'PageRequestHome');
                     $Requests = Requests::get_requests(array_keys($SphRequests));
                     foreach ($Requests as $RequestID => $Request) {
                         $SphRequest = $SphRequests[$RequestID];
-                        $Bounty = $SphRequest['bounty'] * 1024; // Sphinx stores bounty in kB
+                        $Bounty = $SphRequest['bounty'] * 1024 * 1024; // Sphinx stores bounty in MB
                         $VoteCount = $SphRequest['votes'];
 
                         if ($Request['CategoryID'] == 0) {
@@ -615,6 +597,7 @@ View::show_header($Title, '', 'PageRequestHome');
                         } else {
                             $CategoryName = $Categories[$Request['CategoryID'] - 1];
                         }
+                        $RequestType = $Request['RequestType'];
 
                         if ($Request['TorrentID'] != 0) {
                             $IsFilled = true;
@@ -624,7 +607,6 @@ View::show_header($Title, '', 'PageRequestHome');
                         }
 
                         $ArtistForm = Requests::get_artists($RequestID);
-                        $ArtistLink = Artists::display_artists($ArtistForm, true, false);
                         $RequestName = Torrents::group_name($Request, false);
                         $FullName = "<a href=\"requests.php?action=view&amp;id=$RequestID\">$RequestName</a>";
                         $Tags = $Request['Tags'];
@@ -634,9 +616,20 @@ View::show_header($Title, '', 'PageRequestHome');
                                 <?= $FullName ?>
                                 <div class="torrent_info">
                                     <?
+                                    if ($RequestType == 2) {
                                     ?>
-                                    <?= str_replace('|', ', ', $Request['CodecList']) . ' / ' . str_replace('|', ', ', $Request['SourceList']) . ' / ' . str_replace('|', ', ', $Request['ResolutionList']) . ' / ' . str_replace('|', ', ', $Request['ContainerList']) ?>
+                                        <a href="<?= $Request['SourceTorrent'] ?>"><?= str_replace('|', ', ', $Request['CodecList']) . ' / ' . str_replace('|', ', ', $Request['SourceList']) . ' / ' . str_replace('|', ', ', $Request['ResolutionList']) . ' / ' . str_replace('|', ', ', $Request['ContainerList']) ?></a>
+                                    <?
+                                    } else {
+                                    ?>
+                                        <?= str_replace('|', ', ', $Request['CodecList']) . ' / ' . str_replace('|', ', ', $Request['SourceList']) . ' / ' . str_replace('|', ', ', $Request['ResolutionList']) . ' / ' . str_replace('|', ', ', $Request['ContainerList']) ?>
+                                    <?
+                                    }
+                                    ?>
                                 </div>
+                            </td>
+                            <td class="TableRequest-cellType Table-cell">
+                                <?= $RequestType  == 2 ? t('server.requests.seed_torrent') : t('server.requests.new_torrent') ?>
                             </td>
                             <td class="TableRequest-cellVotes Table-cell">
                                 <span id="vote_count_<?= $RequestID ?>"><?= number_format($VoteCount) ?></span>
@@ -661,12 +654,12 @@ View::show_header($Title, '', 'PageRequestHome');
                                     <a href="user.php?id=<?= $FillerInfo['ID'] ?>"><?= $FillerInfo['Username'] ?></a>
                                 <?
                                 } else { ?>
-                                    &mdash;
+                                    --
                                 <?
                                 } ?>
                             </td>
                             <td class="TableRequest-cellRequestedBy Table-cell">
-                                <a href="user.php?id=<?= $Request['UserID'] ?>"><?= Users::format_username($Request['UserID'], false, false, false) ?></a>
+                                <?= Users::format_username($Request['UserID'], false, false, false) ?>
                             </td>
                             <td class="TableRequest-cellCreatedAt TableRequest-cellTime Table-cell">
                                 <?= time_diff($Request['TimeAdded'], 1) ?>

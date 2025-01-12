@@ -14,7 +14,7 @@ globalapp.toggleGroup = function toggleGroup(groupid, link, event) {
     clickedRow = clickedRow.parentNode
   }
   var group_rows = clickedRow.parentNode.children
-  var showing = $(clickedRow).nextElementSibling().has_class('hidden')
+  var showing = $(clickedRow).nextElementSibling().has_class('u-hidden')
   var allGroups = event.ctrlKey || event.metaKey // detect ctrl or cmd
 
   // for dealing with Mac OS X
@@ -32,25 +32,17 @@ globalapp.toggleGroup = function toggleGroup(groupid, link, event) {
     if (row.has_class('Table-rowHeader')) {
       continue
     }
-    if (
-      allGroups ||
-      allGroupsMac ||
-      row[0].getAttribute('group-id') === String(groupid)
-    ) {
+    if (allGroups || allGroupsMac || row[0].getAttribute('group-id') === String(groupid)) {
       if (row.has_class('TableTorrent-rowMovieInfo')) {
         var section
         if (location.pathname.search('/artist.php$') !== -1) {
-          section = lang.get('common.in_this_release_type')
+          section = t('client.common.in_this_release_type')
         } else {
-          section = lang.get('common.on_this_page')
+          section = t('client.common.on_this_page')
         }
-        var tooltip = lang.get(
-          `common.${showing ? 'collapse_this_group' : 'expand_this_group'}`,
-          { section }
-        )
+        var tooltip = t(`common.${showing ? 'collapse_this_group' : 'expand_this_group'}`, { section })
         $('.ToggleGroup-button', row).updateTooltip(tooltip)
-        const parentClassList = $('.ToggleGroup-button', row).raw().parentNode
-          .classList
+        const parentClassList = $('.ToggleGroup-button', row).raw().parentNode.classList
         if (showing) {
           parentClassList.add('is-toHide')
         } else {
@@ -60,17 +52,17 @@ globalapp.toggleGroup = function toggleGroup(groupid, link, event) {
         if (showing) {
           // show the row depending on whether the edition it's in is collapsed or not
           if (row.has_class('TableTorrent-rowCategory')) {
-            row.gshow()
+            row.remove_class('u-hidden')
             showRow = $('a', row.raw()).raw().innerHTML != '+'
           } else {
             if (showRow) {
-              row.gshow()
+              row.remove_class('u-hidden')
             } else {
-              row.ghide()
+              row.add_class('u-hidden')
             }
           }
         } else {
-          row.ghide()
+          row.add_class('u-hidden')
         }
       }
     }

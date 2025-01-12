@@ -9,7 +9,7 @@ list($LastActive, $LastReseedRequest, $UploaderID, $UploadedTime, $GroupID) = $D
 
 if (!check_perms('users_mod')) {
     if (time() - strtotime($LastReseedRequest) < 864000) {
-        error(Lang::get('torrents.already_a_re_seed_request'));
+        error(t('server.torrents.already_a_re_seed_request'));
     }
     if ($LastActive == '0000-00-00 00:00:00' || time() - strtotime($LastActive) < 345678) {
         error(403);
@@ -20,12 +20,6 @@ $DB->query("
 	UPDATE torrents
 	SET LastReseedRequest = NOW()
 	WHERE ID = '$TorrentID'");
-
-$Group = Torrents::get_groups(array($GroupID));
-extract(Torrents::array_group($Group[$GroupID]));
-
-$Name = Artists::display_artists(array('1' => $Artists), false, true);
-$Name .= $GroupName;
 
 $usersToNotify = array();
 
@@ -50,6 +44,8 @@ if ($DB->has_results()) {
 }
 
 $usersToNotify[$UploaderID] = array("uploaded", strtotime($UploadedTime));
+$Torrent = TOrrents::get_torrent($TorrentID);
+$Name = Torrents::torrent_name($Torrent, false);
 
 foreach ($usersToNotify as $UserID => $info) {
     $Username = Users::user_info($UserID)['Username'];
@@ -76,10 +72,10 @@ View::show_header('', '', 'PageTorrentReseed');
 ?>
 <div class="LayoutBody">
     <div class="BodyHeader">
-        <h2 class="BodyHeader-nav"><?= Lang::get('torrents.successfully_sent_re_seed_request') ?></h2>
+        <h2 class="BodyHeader-nav"><?= t('server.torrents.successfully_sent_re_seed_request') ?></h2>
     </div>
-    <div class="BoxBody thin">
-        <p><?= Lang::get('torrents.successfully_sent_re_seed_request_for_torrent') ?><a href="torrents.php?id=<?= $GroupID ?>&torrentid=<?= $TorrentID ?>"><?= display_str($Name) ?></a><?= Lang::get('torrents.space_to_space') ?><?= $NumUsers ?><?= Lang::get('torrents.n_user') ?><?= $NumUsers === 1 ? '' : Lang::get('torrents.s'); ?><?= Lang::get('torrents.period') ?></p>
+    <div>
+        <p><?= t('server.torrents.successfully_sent_re_seed_request_for_torrent') ?><?= Torrents::torrent_simple_view($Torrent['Group'], $Torrent) ?><?= t('server.torrents.space_to_space') ?><?= t('server.torrents.n_user', ['Count' => $NumUsers, 'Values' => [$NumUsers]]) ?></p>
     </div>
 </div>
 <?

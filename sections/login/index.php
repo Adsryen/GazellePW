@@ -5,14 +5,73 @@ use Gazelle\Util\Crypto;
 /*-- TODO ---------------------------//
 Add the JavaScript validation into the display page using the class
 //-----------------------------------*/
+// Function to log a user's login attempt
+function log_attempt($UserID) {
+    global $DB, $Cache, $AttemptID, $Attempts, $Bans, $BannedUntil;
+    $IPStr = $_SERVER['REMOTE_ADDR'];
+    if ($AttemptID) { // User has attempted to log in recently
+        $Attempts++;
+        if ($Attempts > 5) { // Only 6 allowed login attempts, ban user's IP
+            $BannedUntil = time_plus(60 * 60 * 6);
+            $DB->query("
+					UPDATE login_attempts
+					SET
+						LastAttempt = '" . sqltime() . "',
+						Attempts = '" . db_string($Attempts) . "',
+						BannedUntil = '" . db_string($BannedUntil) . "',
+						Bans = Bans + 1
+					WHERE ID = '" . db_string($AttemptID) . "'");
+
+            if ($Bans > 9) { // Automated bruteforce prevention
+                $DB->query("
+						SELECT Reason
+						FROM ip_bans
+						WHERE INET6_ATON('$IPStr') BETWEEN FromIP AND ToIP");
+                if ($DB->has_results()) {
+                    //Ban exists already, only add new entry if not for same reason
+                    list($Reason) = $DB->next_record(MYSQLI_BOTH, false);
+                    if ($Reason != 'Automated ban per >60 failed login attempts') {
+                        $DB->query("
+								UPDATE ip_bans
+								SET Reason = CONCAT('Automated ban per >60 failed login attempts AND ', Reason)
+								WHERE FromIP < INET6_ATON('$IPStr')
+									AND ToIP > INET6_ATON('$IPStr')");
+                    }
+                } else {
+                    //No ban
+                    $DB->query("
+							INSERT IGNORE INTO ip_bans
+								(FromIP, ToIP, Reason)
+							VALUES
+								(INET6_ATON('$IPStr'),INET6_ATON('$IPStr'), 'Automated ban per >60 failed login attempts')");
+                    $Cache->delete_value("ip_bans_$IPStr");
+                }
+            }
+        } else {
+            // User has attempted fewer than 6 logins
+            $DB->query("
+					UPDATE login_attempts
+					SET
+						LastAttempt = '" . sqltime() . "',
+						Attempts = '" . db_string($Attempts) . "',
+						BannedUntil = '0000-00-00 00:00:00'
+					WHERE ID = '" . db_string($AttemptID) . "'");
+        }
+    } else { // User has not attempted to log in recently
+        $Attempts = 1;
+        $DB->query("
+				INSERT INTO login_attempts
+					(UserID, IP, LastAttempt, Attempts)
+				VALUES
+					('" . db_string($UserID) . "', '" . db_string($IPStr) . "', '" . sqltime() . "', 1)");
+    }
+} // end log_attempt function
 
 function checkLoginKey($Key) {
     $Key = db_string($Key);
     G::$DB->query("select count(1), UserID, Username, ID from login_link where LoginKey='$Key' and used='0'");
     return G::$DB->next_record(MYSQLI_BOTH, false);
 }
-
-include("close.php");
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -249,69 +308,7 @@ elseif (isset($_REQUEST['act']) && $_REQUEST['act'] === '2fa_recovery') {
 				WHERE IP = '" . db_string($_SERVER['REMOTE_ADDR']) . "'");
             list($AttemptID, $Attempts, $Bans, $BannedUntil) = $DB->next_record();
 
-            // Function to log a user's login attempt
-            function log_attempt($UserID) {
-                global $DB, $Cache, $AttemptID, $Attempts, $Bans, $BannedUntil;
-                $IPStr = $_SERVER['REMOTE_ADDR'];
-                $IPA = substr($IPStr, 0, strcspn($IPStr, '.'));
-                $IP = Tools::ip_to_unsigned($IPStr);
-                if ($AttemptID) { // User has attempted to log in recently
-                    $Attempts++;
-                    if ($Attempts > 5) { // Only 6 allowed login attempts, ban user's IP
-                        $BannedUntil = time_plus(60 * 60 * 6);
-                        $DB->query("
-					UPDATE login_attempts
-					SET
-						LastAttempt = '" . sqltime() . "',
-						Attempts = '" . db_string($Attempts) . "',
-						BannedUntil = '" . db_string($BannedUntil) . "',
-						Bans = Bans + 1
-					WHERE ID = '" . db_string($AttemptID) . "'");
 
-                        if ($Bans > 9) { // Automated bruteforce prevention
-                            $DB->query("
-						SELECT Reason
-						FROM ip_bans
-						WHERE $IP BETWEEN FromIP AND ToIP");
-                            if ($DB->has_results()) {
-                                //Ban exists already, only add new entry if not for same reason
-                                list($Reason) = $DB->next_record(MYSQLI_BOTH, false);
-                                if ($Reason != 'Automated ban per >60 failed login attempts') {
-                                    $DB->query("
-								UPDATE ip_bans
-								SET Reason = CONCAT('Automated ban per >60 failed login attempts AND ', Reason)
-								WHERE FromIP = $IP
-									AND ToIP = $IP");
-                                }
-                            } else {
-                                //No ban
-                                $DB->query("
-							INSERT IGNORE INTO ip_bans
-								(FromIP, ToIP, Reason)
-							VALUES
-								('$IP','$IP', 'Automated ban per >60 failed login attempts')");
-                                $Cache->delete_value("ip_bans_$IPA");
-                            }
-                        }
-                    } else {
-                        // User has attempted fewer than 6 logins
-                        $DB->query("
-					UPDATE login_attempts
-					SET
-						LastAttempt = '" . sqltime() . "',
-						Attempts = '" . db_string($Attempts) . "',
-						BannedUntil = '0000-00-00 00:00:00'
-					WHERE ID = '" . db_string($AttemptID) . "'");
-                    }
-                } else { // User has not attempted to log in recently
-                    $Attempts = 1;
-                    $DB->query("
-				INSERT INTO login_attempts
-					(UserID, IP, LastAttempt, Attempts)
-				VALUES
-					('" . db_string($UserID) . "', '" . db_string($IPStr) . "', '" . sqltime() . "', 1)");
-                }
-            } // end log_attempt function
             log_attempt($UserID);
             unset($_SESSION['temp_stay_logged'], $_SESSION['temp_user_data']);
             header('Location: login.php');
@@ -413,83 +410,19 @@ else {
 		WHERE IP = '" . db_string($_SERVER['REMOTE_ADDR']) . "'");
     list($AttemptID, $Attempts, $Bans, $BannedUntil) = $DB->next_record();
 
-    // Function to log a user's login attempt
-    function log_attempt($UserID) {
-        global $DB, $Cache, $AttemptID, $Attempts, $Bans, $BannedUntil;
-        $IPStr = $_SERVER['REMOTE_ADDR'];
-        $IPA = substr($IPStr, 0, strcspn($IPStr, '.'));
-        $IP = Tools::ip_to_unsigned($IPStr);
-        if ($AttemptID) { // User has attempted to log in recently
-            $Attempts++;
-            if ($Attempts > 5) { // Only 6 allowed login attempts, ban user's IP
-                $BannedUntil = time_plus(60 * 60 * 6);
-                $DB->query("
-					UPDATE login_attempts
-					SET
-						LastAttempt = '" . sqltime() . "',
-						Attempts = '" . db_string($Attempts) . "',
-						BannedUntil = '" . db_string($BannedUntil) . "',
-						Bans = Bans + 1
-					WHERE ID = '" . db_string($AttemptID) . "'");
-
-                if ($Bans > 9) { // Automated bruteforce prevention
-                    $DB->query("
-						SELECT Reason
-						FROM ip_bans
-						WHERE $IP BETWEEN FromIP AND ToIP");
-                    if ($DB->has_results()) {
-                        //Ban exists already, only add new entry if not for same reason
-                        list($Reason) = $DB->next_record(MYSQLI_BOTH, false);
-                        if ($Reason != 'Automated ban per >60 failed login attempts') {
-                            $DB->query("
-								UPDATE ip_bans
-								SET Reason = CONCAT('Automated ban per >60 failed login attempts AND ', Reason)
-								WHERE FromIP = $IP
-									AND ToIP = $IP");
-                        }
-                    } else {
-                        //No ban
-                        $DB->query("
-							INSERT IGNORE INTO ip_bans
-								(FromIP, ToIP, Reason)
-							VALUES
-								('$IP','$IP', 'Automated ban per >60 failed login attempts')");
-                        $Cache->delete_value("ip_bans_$IPA");
-                    }
-                }
-            } else {
-                // User has attempted fewer than 6 logins
-                $DB->query("
-					UPDATE login_attempts
-					SET
-						LastAttempt = '" . sqltime() . "',
-						Attempts = '" . db_string($Attempts) . "',
-						BannedUntil = '0000-00-00 00:00:00'
-					WHERE ID = '" . db_string($AttemptID) . "'");
-            }
-        } else { // User has not attempted to log in recently
-            $Attempts = 1;
-            $DB->query("
-				INSERT INTO login_attempts
-					(UserID, IP, LastAttempt, Attempts)
-				VALUES
-					('" . db_string($UserID) . "', '" . db_string($IPStr) . "', '" . sqltime() . "', 1)");
-        }
-    } // end log_attempt function
-
     // If user has submitted form
     if (isset($_POST['username']) && !empty($_POST['username']) && isset($_POST['password']) && !empty($_POST['password'])) {
-        if ($CloseLogin) {
+        if (CONFIG['CLOSE_LOGIN']) {
             if (isset($_POST['loginkey'])) {
                 $CheckKey = checkLoginKey($_POST['loginkey']);
                 if (!$CheckKey[0] || strcasecmp($CheckKey['Username'], $_POST['username']) != 0) {
                     header('HTTP/1.1 301 Moved Permanently');
-                    header('Location: https://kshare.club/');
+                    header('Location: ' . $CONFIG['CLOSE_REDIRECT_URL']);
                     return;
                 }
             } else {
                 header('HTTP/1.1 301 Moved Permanently');
-                header('Location: https://kshare.club/');
+                header('Location: ' . $CONFIG['CLOSE_REDIRECT_URL']);
                 return;
             }
         }
@@ -524,7 +457,7 @@ else {
 							SET passhash = ?
 							WHERE ID = ?", Users::make_password_hash($_POST['password']), $UserID);
                     }
-                    if ($CloseLogin) {
+                    if (CONFIG['CLOSE_LOGIN']) {
                         $DB->query("update login_link set used='1' where id=" . $CheckKey['ID']);
                     }
                     if ($Enabled == 1) {
@@ -599,14 +532,14 @@ else {
                             setcookie('username', db_string($_POST['username']), time() + 60 * 60, '/', '', false);
                             header('Location: login.php?action=disabled');
                         } elseif ($Enabled == 0) {
-                            $Err = Lang::get('login.err_1');
+                            $Err = t('server.login.err_1');
                         }
                         setcookie('keeplogged', '', time() + 60 * 60 * 24 * 365, '/', '', false);
                     }
                 } else {
                     log_attempt($UserID);
 
-                    $Err = Lang::get('login.err_2');
+                    $Err = t('server.login.err_2');
                     setcookie('keeplogged', '', time() + 60 * 60 * 24 * 365, '/', '', false);
                 }
             } else {

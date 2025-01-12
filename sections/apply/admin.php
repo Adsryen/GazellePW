@@ -2,7 +2,7 @@
 if (!check_perms('admin_manage_applicants')) {
     error(403);
 }
-View::show_header(Lang::get('apply.applicant_administration'), 'bbcode', 'PageApplyAdmin');
+View::show_header(t('server.apply.applicant_administration'), 'bbcode', 'PageApplyAdmin');
 $EDIT_ID = 0;
 $Saved   = '';
 if (isset($_POST['auth'])) {
@@ -26,7 +26,7 @@ if (isset($_POST['auth'])) {
                 );
             }
             $EDIT_ID = 0; /* return to list */
-            $Saved = Lang::get('apply.updated');
+            $Saved = t('server.apply.updated');
         }
     } else {
         $AppRole = new ApplicantRole(
@@ -35,68 +35,70 @@ if (isset($_POST['auth'])) {
             (isset($_POST['status']) && is_numeric($_POST['status']) && $_POST['status'] == 1),
             $LoggedUser['ID']
         );
-        $Saved = Lang::get('apply.saved');
+        $Saved = t('server.apply.saved');
     }
 }
 ?>
 
 <div class="LayoutBody">
     <div class="BodyHeader">
-        <h2 class="BodyHeader-nav"><?= Lang::get('apply.manage_roles_at_before') ?><?= CONFIG['SITE_NAME'] ?><?= Lang::get('apply.manage_roles_at_after') ?></h2>
+        <h2 class="BodyHeader-nav"><?= t('server.apply.manage_roles_at') ?></h2>
         <div class="BodyNavLinks">
-            <a href="/apply.php" class="brackets"><?= Lang::get('apply.apply') ?></a>
-            <a href="/apply.php?action=view" class="brackets"><?= Lang::get('apply.current_applications') ?></a>
-            <a href="/apply.php?action=view&status=resolved" class="brackets"><?= Lang::get('apply.resolved_applications') ?></a>
+            <a href="/apply.php" class="brackets"><?= t('server.apply.apply') ?></a>
+            <a href="/apply.php?action=view" class="brackets"><?= t('server.apply.current_applications') ?></a>
+            <a href="/apply.php?action=view&status=resolved" class="brackets"><?= t('server.apply.resolved_applications') ?></a>
         </div>
     </div>
 
-    <form method="post" class="LayoutBody" action="/apply.php?action=admin">
-        <? if (!$EDIT_ID) {
-            $Roles = ApplicantRole::get_list(true);
-            if (count($Roles)) {
-        ?>
-                <div class="Box">
-                    <div class="Box-header"><?= Lang::get('apply.current_roles') ?></div>
-                    <div class="Box-body">
-                        <? if ($Saved) { ?>
-                            <p><?= Lang::get('apply.the_role_was_1') ?><?= $AppRole->title() ?><?= Lang::get('apply.the_role_was_2') ?><?= $Saved ?><?= Lang::get('apply.the_role_was_3') ?></p>
-                        <? } ?>
-
-
-                        <table>
-                            <? foreach ($Roles as $title => $info) { ?>
-                                <tr>
-                                    <td>
-                                        <div class="head">
-                                            <h2><?= $title ?></h2>
-                                            (<?= $info['published'] ? Lang::get('apply.published') : Lang::get('apply.archived') ?>)
-                                            <?= Lang::get('apply.role_created_by_1') ?><?= time_diff($info['created'], 2) ?><?= Lang::get('apply.role_created_by_2') ?>
-                                            <?=
-                                            Users::format_username($info['user_id']) . Lang::get('apply.role_created_by_3')
-                                                . ($info['modified'] == $info['created'] ? '' : Lang::get('apply.role_created_by_4') . time_diff($info['modified'], 2))
-                                            ?><?= Lang::get('apply.role_created_by_5') ?>
-                                            <input class="Button" type="submit" name="edit-<?= $info['id'] ?>" value="Edit" />
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="HtmlText PostArticle">
-                                            <?= Text::full_format($info['description']) ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <? } /* foreach */ ?>
-                        </table>
-                    </div>
+    <? if (!$EDIT_ID) {
+        $Roles = ApplicantRole::get_list(true);
+        if (count($Roles)) {
+    ?>
+            <div class="Group">
+                <div class="Group-header">
+                    <div class="Group-headerTitle">
+                        <?= t('server.apply.current_roles') ?></div>
                 </div>
-            <?
-            } else {
-            ?>
-                <p><?= Lang::get('apply.no_current_roles') ?></p>
-        <?  }
-        } /* !$EDIT_ID */ ?>
+                <div class="Group-body">
+                    <? foreach ($Roles as $title => $info) { ?>
+                        <form id="role_edit<?= $info['id'] ?>" method="post" class="LayoutBody" action="/apply.php?action=admin">
+                            <div class="Box">
+                                <div class="Box-header">
+                                    <div class="Box-headerLeft">
+                                        <div class="Box-headerTitle">
+                                            <?= display_str($title) ?>
+                                        </div>
+                                        - <?= $info['published'] ? t('server.apply.published') : t('server.apply.archived') ?>
+                                        - <?= $info['modified'] == $info['created'] ? time_diff($info['created'], 2) :  time_diff($info['modified'], 2) ?>
+                                        - <?= t('server.apply.role_created_by', ['Values' => [Users::format_username($info['user_id'])]]) ?>
+                                        <input type="hidden" name="edit-<?= $info['id'] ?>" value="Edit" />
+                                    </div>
+                                    <div class="Box-headerActions">
+                                        <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
+                                        <? if ($EDIT_ID) { ?>
+                                            <input type="hidden" name="edit" value="<?= $EDIT_ID ?>" />
+                                        <?  } ?>
+                                        <input type="hidden" name="user_id" value="<?= $LoggedUser['ID'] ?>" />
+                                        <a href="javascript:{}" onclick="document.getElementById('role_edit<?= $info['id'] ?>').submit();"><?= t('server.common.edit') ?></a>
 
+                                    </div>
+                                </div>
+                                <div class="Box-body HtmlText PostArticle">
+                                    <?= Text::full_format($info['description']) ?>
+                                </div>
+                            </div>
+                        </form>
+                    <? } /* foreach */ ?>
+                </div>
+            </div>
+        <?
+        } else {
+        ?>
+            <p><?= t('server.apply.no_current_roles') ?></p>
+    <?  }
+    } /* !$EDIT_ID */ ?>
+
+    <form method="post" class="LayoutBody" action="/apply.php?action=admin">
         <div class="Form-rowList" variant="header">
 
             <?
@@ -110,26 +112,24 @@ if (isset($_POST['auth'])) {
             ?>
             <table>
                 <tr class="Form-rowHeader">
-                    <td><?= $EDIT_ID ? Lang::get('apply.edit_role') : Lang::get('apply.new_role') ?><?= Lang::get('apply.space_role') ?></td>
+                    <td><?= $EDIT_ID ? t('server.apply.edit_role') : t('server.apply.new_role') ?><?= t('server.apply.space_role') ?></td>
                 </tr>
                 <tr class="Form-row">
-                    <td class="Form-label"><?= Lang::get('apply.role_title') ?></td>
+                    <td class="Form-label"><?= t('server.apply.role_title') ?></td>
                     <td class="Form-inputs"><input class="Input" type="text" width="100" name="title" value="<?= $EDIT_ID ? $AppRole->title() : '' ?>" /></td>
                 </tr>
                 <tr class="Form-row">
-                    <td class="Form-label"><?= Lang::get('apply.visibility') ?></td>
+                    <td class="Form-label"><?= t('server.apply.visibility') ?></td>
                     <td class="Form-inputs">
-                        <input type="radio" name="status" value="1" id="status-pub" <?= $checked_published ?> /><label for="status-pub"><?= Lang::get('apply.published') ?></label><br />
-                        <input type="radio" name="status" value="0" id="status-arch" <?= $checked_archived ?> /><label for="status-arch"><?= Lang::get('apply.archived') ?></label>
+                        <input type="radio" name="status" value="1" id="status-pub" <?= $checked_published ?> /><label for="status-pub"><?= t('server.apply.published') ?></label><br />
+                        <input type="radio" name="status" value="0" id="status-arch" <?= $checked_archived ?> /><label for="status-arch"><?= t('server.apply.archived') ?></label>
                     </td>
                 </tr>
                 <tr class="Form-row">
-                    <td class="Form-label"><?= Lang::get('apply.description') ?></td>
+                    <td class="Form-label"><?= t('server.apply.description') ?></td>
                     <td class="Form-items">
                         <?
-                        $text = new TEXTAREA_PREVIEW('description', 'description', $EDIT_ID ? $AppRole->description() : '', 60, 8, true, true);
-                        $id = $text->getID();
-                        echo $text;
+                        new TEXTAREA_PREVIEW('description', 'description', $EDIT_ID ? $AppRole->description() : '', 60, 8, true, true);
                         ?>
                     </td>
                 <tr class="Form-row">
@@ -139,7 +139,7 @@ if (isset($_POST['auth'])) {
                             <input type="hidden" name="edit" value="<?= $EDIT_ID ?>" />
                         <?  } ?>
                         <input type="hidden" name="user_id" value="<?= $LoggedUser['ID'] ?>" />
-                        <input class="Button" type="submit" id="submit" value="Save Role" />
+                        <button class="Button" type="submit" id="submit" value="Save Role"><?= t('client.common.save') ?></button>
                     </td>
                 </tr>
                 </tr>

@@ -1,6 +1,7 @@
 <?php
 
 use Gazelle\Manager\Donation;
+use Gazelle\Util\Crypto;
 
 authorize();
 
@@ -153,6 +154,76 @@ if (isset($_POST['p_donor_stats'])) {
 // End building $Paranoia
 
 
+// API Key Helpers
+
+function doesUserHasToken(int $UserID): bool {
+    return G::$DB->scalar(
+        "
+        SELECT 1
+        FROM api_applications
+        WHERE UserID = $UserID"
+    ) === 1;
+}
+
+function hasApiToken(int $userId, string $token): bool {
+    return G::$DB->scalar(
+        "
+        SELECT 1
+        FROM api_applications
+        WHERE UserID = $userId
+            AND Token = '$token'"
+    ) === 1;
+}
+
+function revokeApiTokenById(int $UserID): int {
+    G::$DB->prepared_query(
+        "
+        DELETE FROM api_applications
+        WHERE UserID = ? ",
+        $UserID
+    );
+    return G::$DB->affected_rows();
+}
+
+function createApiToken(int $UserID, string $key): string {
+    $suffix = sprintf('%014d', $UserID);
+    $name = "API_TOKEN";
+
+    while (true) {
+        // prevent collisions with an existing token name
+        $token = base64UrlEncode(Crypto::encrypt(random_bytes(32) . $suffix, $key));
+        if (!hasApiToken($UserID, $token))
+            break;
+    }
+
+    G::$DB->prepared_query(
+        "
+        INSERT INTO api_applications
+               (UserID, Name, Token)
+        VALUES (?,       ?,    ?)",
+        $UserID,
+        $name,
+        $token
+    );
+    return $token;
+}
+
+function base64UrlEncode($data): string {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+// API Key Helpers
+
+// Reset API Key
+if (isset($_POST["resetApiKey"])) {
+    G::$DB->begin_transaction();
+    if (doesUserHasToken($UserID)) {
+        // User has already created a token. We'll delete the entry here.
+        revokeApiTokenById($UserID);
+    }
+    createApiToken($UserID, CONFIG['ENCKEY']);
+    G::$DB->commit();
+}
+
 // Email change
 $DB->query("
 	SELECT Email
@@ -226,6 +297,13 @@ if ($Err) {
     header("Location: user.php?action=edit&userid=$UserID");
     die();
 }
+$DB->query("
+	SELECT SiteOptions
+	FROM users_info
+	WHERE UserID = $UserID");
+list($SiteOptions) = $DB->next_record();
+
+$Options = unserialize_array($SiteOptions);
 
 if (!empty($LoggedUser['DefaultSearch'])) {
     $Options['DefaultSearch'] = $LoggedUser['DefaultSearch'];
@@ -237,11 +315,10 @@ $Options['PostsPerPage']        = (int)$_POST['postsperpage'];
 //$Options['HideCollage']         = (!empty($_POST['hidecollage']) ? 1 : 0);
 $Options['CollageCovers']       = (empty($_POST['collagecovers']) ? 0 : $_POST['collagecovers']);
 $Options['ShowTorFilter']       = (empty($_POST['showtfilter']) ? 0 : 1);
-$Options['ShowTags']            = (!empty($_POST['showtags']) ? 1 : 0);
+$Options['ShowHotMovieOnHomePage']       = (empty($_POST['showhotmovie']) ? 0 : 1);
 $Options['AutoSubscribe']       = (!empty($_POST['autosubscribe']) ? 1 : 0);
 $Options['DisableSmileys']      = (!empty($_POST['disablesmileys']) ? 1 : 0);
 $Options['EnableMatureContent'] = (!empty($_POST['enablematurecontent']) ? 1 : 0);
-$Options['Tooltipster']         = (!empty($_POST['usetooltipster']) ? 1 : 0);
 $Options['AutoloadCommStats']   = (check_perms('users_mod') && !empty($_POST['autoload_comm_stats']) ? 1 : 0);
 $Options['DisableAvatars']      = db_string($_POST['disableavatars']);
 $Options['Identicons']          = (!empty($_POST['identicons']) ? (int)$_POST['identicons'] : 0);
@@ -296,7 +373,8 @@ $NotifyOnDeleteSeeding = (!empty($_POST['notifyondeleteseeding']) ? 1 : 0);
 $NotifyOnDeleteSnatched = (!empty($_POST['notifyondeletesnatched']) ? 1 : 0);
 $NotifyOnDeleteDownloaded = (!empty($_POST['notifyondeletedownloaded']) ? 1 : 0);
 
-Donations::update_rewards($UserID);
+$donation = new Donation;
+$donation->updateReward($UserID);
 NotificationsManager::save_settings($UserID);
 
 // Information on how the user likes to download torrents is stored in cache

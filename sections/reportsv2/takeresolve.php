@@ -210,16 +210,16 @@ if ($DB->affected_rows() > 0 || !$Report) {
             $Log .= ' ( ' . $Escaped['log_message'] . ' )';
         }
         $DB->query("
-			SELECT GroupID, hex(info_hash)
+			SELECT GroupID, hex(info_hash), FilePath, Size
 			FROM torrents
 			WHERE ID = $TorrentID");
-        list($GroupID, $InfoHash) = $DB->next_record();
+        list($GroupID, $InfoHash, $FilePath, $Size) = $DB->next_record();
         Torrents::delete_torrent($TorrentID, 0, $ResolveType['reason']);
 
         //$InfoHash = unpack("H*", $InfoHash);
         $Log .= ' (' . strtoupper($InfoHash) . ')';
         Misc::write_log($Log);
-        $Log = 'deleted torrent for the reason: ' . $ResolveType['title'] . '. ( ' . $Escaped['log_message'] . ' )';
+        $Log = 'deleted ' . $FilePath . '(' . number_format($Size / (1024 * 1024 * 1024), 2) .  ' GB) for the reason: ' . $ResolveType['title'] . '. ( ' . $Escaped['log_message'] . ' )';
         Torrents::write_group_log($GroupID, $TorrentID, $LoggedUser['ID'], $Log, 0);
         $TrumpID = 0;
         if ($Escaped['resolve_type'] === 'trump') {
@@ -269,7 +269,7 @@ if ($DB->affected_rows() > 0 || !$Report) {
             $AdminComment .= ' (' . $Escaped['admin_message'] . ')';
         }
         if ($AdminComment) {
-            $AdminComment = date('Y-m-d H:i:s') . " - Comment: $AdminComment on torrent $TorrentID by " . $LoggedUser['Username'] . "\n\n";
+            $AdminComment = date('Y-m-d H:i:s') . " - Report Comment: $AdminComment on torrent $TorrentID by " . $LoggedUser['Username'] . "\n\n";
 
             $DB->query("
 				UPDATE users_info
@@ -281,34 +281,44 @@ if ($DB->affected_rows() > 0 || !$Report) {
     //PM
     if ($Escaped['uploader_pm'] || $Warning > 0 || isset($Escaped['delete']) || $SendPM || $_POST['custom_trumpable']) {
         if (isset($Escaped['delete'])) {
-            $PM = Lang::get('reportsv2.your_above_torrent_was_reported_and_has_been_deleted_before') . site_url() . "torrents.php?torrentid=$TorrentID" . Lang::get('reportsv2.your_above_torrent_was_reported_and_has_been_deleted_after') . "\n\n";
+            $PM = t('server.reportsv2.your_above_torrent_was_reported_and_has_been_deleted', ['Values' => [
+                site_url() . "torrents.php?torrentid=$TorrentID"
+            ]])  . "\n\n";
         } else {
-            $PM = Lang::get('reportsv2.your_above_torrent_was_reported_but_not_been_deleted_before') . site_url() . "torrents.php?torrentid=$TorrentID" . Lang::get('reportsv2.your_above_torrent_was_reported_but_not_been_deleted_after') . "\n\n";
+            $PM = t('server.reportsv2.your_above_torrent_was_reported_but_not_been_deleted', ['Values' => [
+                site_url() . "torrents.php?torrentid=$TorrentID"
+            ]]) . "\n\n";
         }
 
-        $Preset = $_POST['custom_trumpable'] ? $_POST['custom_trumpable'] . "\n\n" . Lang::get('reportsv2.your_torrent_is_now_displayed_on_better_php_and_trumpable_before') . site_url() . Lang::get('reportsv2.your_torrent_is_now_displayed_on_better_php_and_trumpable_after') : $ResolveType['resolve_options']['pm'];
+        $Preset = $_POST['custom_trumpable'] ? $_POST['custom_trumpable'] . "\n\n" . t('server.reportsv2.your_torrent_is_now_displayed_on_better_php_and_trumpable', ['Values' => [
+            site_url()
+        ]]) : $ResolveType['resolve_options']['pm'];
 
         if ($Preset != '') {
-            $PM .= Lang::get('reportsv2.pm_reason') . ": $Preset\n\n";
+            $PM .= t('server.reportsv2.pm_reason') . ": $Preset\n\n";
         }
 
         if ($Warning > 0) {
-            $PM .= Lang::get('reportsv2.this_has_resulted_in_an_n_week_warning_before') . site_url() . "wiki.php?action=article&amp;id=114]$Warning" . Lang::get('reportsv2.this_has_resulted_in_an_n_week_warning_after') . "\n\n";
+            $PM .= t('server.reportsv2.this_has_resulted_in_an_n_week_warning', ['Values' => [
+                site_url() . "wiki.php?action=article&amp;id=114]$Warning"
+            ]]) .  "\n\n";
         }
 
         if ($Upload) {
-            $PM .= Lang::get('reportsv2.this_has_resulted_in_the_loss_of_your_upload_privilege_before') . ($Warning > 0 ? Lang::get('reportsv2.also_space') : '') . Lang::get('reportsv2.this_has_resulted_in_the_loss_of_your_upload_privilege_after') . "\n\n";
+            $PM .= t('server.reportsv2.this_has_resulted_in_the_loss_of_your_upload_privilege', ['Values' => [
+                ($Warning > 0 ? t('server.reportsv2.also_space') : '')
+            ]]) . "\n\n";
         }
 
         if ($Log) {
-            $PM .= Lang::get('reportsv2.log_message') . ": $Log\n\n";
+            $PM .= t('server.reportsv2.log_message') . ": $Log\n\n";
         }
 
         if ($Escaped['uploader_pm']) {
-            $PM .= Lang::get('inbox.message_from_before') . $LoggedUser['Username'] . Lang::get('inbox.message_from_after') . ": $PMMessage\n\n";
+            $PM .= t('server.inbox.message_from', ['Values' => [$LoggedUser['Username']]]) .  ": $PMMessage\n\n";
         }
 
-        $PM .= Lang::get('reportsv2.report_was_handled_by_user_before') . $LoggedUser['Username'] . Lang::get('reportsv2.report_was_handled_by_user_after');
+        $PM .= t('server.reportsv2.report_was_handled_by_user', ['Values' => [$LoggedUser['Username']]]);
 
         Misc::send_pm($UploaderID, 0, "种子处理提示: " . $Escaped['raw_name'], $PM);
     }

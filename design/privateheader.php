@@ -6,7 +6,7 @@ define('FOOTER_FILE', CONFIG['SERVER_ROOT'] . '/design/privatefooter.php');
 
 global $LoggedUser;
 $donation = new Donation();
-$CurrentLang = Lang::getUserLang($LoggedUser['ID']);
+$CurrentLang = Lang::getCurrentLangStandard();
 
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -106,7 +106,6 @@ $CurrentLang = Lang::getUserLang($LoggedUser['ID']);
     if ($NotificationsManager->is_skipped(NotificationsManager::SUBSCRIPTIONS)) {
         $NewSubscriptions = Subscriptions::has_new_subscriptions();
     }
-    $Scripts = array_merge(['jquery', 'script_start', 'ajax.class', 'cookie.class', 'global', 'jquery.autocomplete', 'autocomplete', 'jquery.countdown.min', 'bbcode'], explode(',', $JSIncludes));
     ?>
 </head>
 
@@ -115,8 +114,8 @@ $CurrentLang = Lang::getUserLang($LoggedUser['ID']);
 $Alerts = array();
 $ModBar = array();
 // Important banner
-if (isset(CONFIG['BANNER_URL']) && isset(CONFIG['BANNER_TEXT']) && !empty(CONFIG['BANNER_URL']) && !empty(CONFIG['BANNER_TEXT'])) {
-    $Alerts[] = "<a class='HeaderAnnounceItem-link' href='" . CONFIG['BANNER_URL'] . "'>" . CONFIG['BANNER_TEXT'] . "</a>";
+if (isset(CONFIG['BANNER_URL']) && !empty(CONFIG['BANNER_URL'])) {
+    $Alerts[] = "<a class='HeaderAnnounceItem-link' href='" . CONFIG['BANNER_URL'] . "'>" . CONFIG['BANNER_TEXT'][$CurrentLang]  . "</a>";
 }
 
 // Staff blog
@@ -162,9 +161,9 @@ if ($NotificationsManager->is_traditional(NotificationsManager::INBOX)) {
 }
 
 if (G::$LoggedUser['RatioWatch']) {
-    $Alerts[] = Lang::get('pub.ratio_watch_you_have_before') . time_diff(G::$LoggedUser['RatioWatchEnds'], 3) . Lang::get('pub.ratio_watch_you_have_after');
+    $Alerts[] = t('server.pub.ratio_watch_you_have', ['Values' => [time_diff(G::$LoggedUser['RatioWatchEnds'], 3)]]);
 } elseif (G::$LoggedUser['CanLeech'] != 1) {
-    $Alerts[] = Lang::get('pub.ratio_watch_your_dl_privileges');
+    $Alerts[] = t('server.pub.ratio_watch_your_dl_privileges');
 }
 
 // Torrents
@@ -177,23 +176,14 @@ if ($NotificationsManager->is_traditional(NotificationsManager::TORRENTS)) {
     $NotificationsManager->clear_notifications_array();
 }
 
+if (check_perms('users_mod')) {
+    $ModBar[] = '<a class="Button ButtonHeader"  href="tools.php">' . t('server.pub.toolbox') . '</a>';
+}
 if (check_perms('users_give_donor')) {
     $Count = $donation->getPendingDonationCount();
     if ($Count > 0) {
-        $Alerts[] = "<a class='Button ButtonHeader' href='tools.php?action=prepaid_card'>" . $Count . Lang::get('donate.has_pending_donation') . "</a>";
+        $ModBar[] = "<a class='Button ButtonHeader' href='tools.php?action=prepaid_card'>" . $Count . t('server.donate.has_pending_donation') . "</a>";
     }
-}
-if (check_perms('admin_interviewer')) {
-    // Interviewer code
-    G::$DB->query("SELECT count(*) FROM `register_apply` WHERE `apply_status`=0 or `apply_status`=3");
-    list($ApplyCount) = G::$DB->next_record();
-    $ModBar[] = '<a class="Button ButtonHeader"  href="tools.php?action=apply_list">' . ($ApplyCount ? "$ApplyCount " : "") . Lang::get('pub.user_manage') . '</a>';
-}
-if (check_perms('users_mod')) {
-    $ModBar[] = '<a class="Button ButtonHeader"  href="tools.php">' . Lang::get('pub.toolbox') . '</a>';
-}
-if (check_perms('staff_award')) {
-    $ModBar[] = '<a class="Button ButtonHeader"  href="tools.php?action=award">' . Lang::get('pub.statistics') . '</a>';
 }
 if (
     check_perms('users_mod')
@@ -274,7 +264,7 @@ if (check_perms('admin_reports')) {
         G::$Cache->cache_value('num_torrent_reportsv2', $NumTorrentReports, 0);
     }
 
-    $ModBar[] = '<a class="Button ButtonHeader"  href="reportsv2.php">' . $NumTorrentReports . Lang::get('pub.report') . '</a>';
+    $ModBar[] = '<a class="Button ButtonHeader"  href="reportsv2.php">' . $NumTorrentReports . t('server.pub.report') . '</a>';
 
     // Other reports code
     $NumOtherReports = G::$Cache->get_value('num_other_reports');
@@ -288,7 +278,7 @@ if (check_perms('admin_reports')) {
     }
 
     if ($NumOtherReports > 0) {
-        $ModBar[] = '<a class="Button ButtonHeader"  href="reports.php">' . $NumOtherReports . (($NumTorrentReports == 1) ? Lang::get('pub.other_report') : Lang::get('pub.other_reports')) . '</a>';
+        $ModBar[] = '<a class="Button ButtonHeader"  href="reports.php">' . $NumOtherReports . (($NumTorrentReports == 1) ? t('server.pub.other_report') : t('server.pub.other_reports')) . '</a>';
     }
 } elseif (check_perms('project_team')) {
     $NumUpdateReports = G::$Cache->get_value('num_update_reports');
@@ -325,24 +315,21 @@ if (check_perms('admin_reports')) {
 if (check_perms('admin_manage_applicants')) {
     $NumNewApplicants = Applicant::new_applicant_count();
     if ($NumNewApplicants > 0) {
-        $ModBar[] = sprintf(
-            '<a class="Button ButtonHeader"  href="apply.php?action=view">%d new Applicant%s</a>',
-            $NumNewApplicants,
-            Lang::get('apply.new_applicant')
-        );
+        $ModBar[] = '<a class="Button ButtonHeader" href="apply.php?action=view">'
+            . t('server.apply.new_applicant', ['Count' => $NumNewApplicants, 'Values' => [$NumNewApplicants]])
+            . '</a>';
     }
 
     $NumNewReplies = Applicant::new_reply_count();
     if ($NumNewReplies > 0) {
-        $ModBar[] = sprintf(
-            '<a class="Button ButtonHeader"  href="apply.php?action=view">%d %s</a>',
-            $NumNewReplies,
-            Lang::get('apply.new_applicant_reply')
-        );
+        $ModBar[] =
+            '<a class="Button ButtonHeader" href="apply.php?action=view">'
+            .  t('server.apply.new_applicant_reply', ['Count' => $NumNewReplies, 'Values' => [$NumNewReplies]])
+            . '</a>';
     }
 }
 
-if (check_perms('users_mod') && FEATURE_EMAIL_REENABLE) {
+if (check_perms('users_mod') && CONFIG['FEATURE_EMAIL_REENABLE']) {
     $NumEnableRequests = G::$Cache->get_value(AutoEnable::CACHE_KEY_NAME);
     if ($NumEnableRequests === false) {
         G::$DB->query("SELECT COUNT(1) FROM users_enable_requests WHERE Outcome IS NULL");
@@ -351,7 +338,7 @@ if (check_perms('users_mod') && FEATURE_EMAIL_REENABLE) {
     }
 
     if ($NumEnableRequests > 0) {
-        $ModBar[] = '<a class="Button ButtonHeader"  href="tools.php?action=enable_requests">' . $NumEnableRequests . Lang::get('global.enable_requests') . "</a>";
+        $ModBar[] = '<a class="Button ButtonHeader"  href="tools.php?action=enable_requests">' . $NumEnableRequests . '&nbsp' . t('server.common.enable_requests') . "</a>";
     }
 }
 ?>
@@ -384,16 +371,16 @@ if ($_REQUEST['action']) {
             <div class="HeaderInfo">
                 <ul class="HeaderDonate HeaderInfo-left">
                     <li class="HeaderDonate-content HeaderInfo-item brackets <?= Format::add_class($PageID, array('donate'), 'active', false) ?>">
-                        <a class="HeaderDonate-link LinkHeader Link" href="donate.php" data-tooltip="<?= Lang::get('donate.progress', ['Values' => [$donation->getYearProgress()]]) ?>">
+                        <a class="HeaderDonate-link LinkHeader Link" href="donate.php" data-tooltip="<?= t('server.donate.progress', ['Values' => [$donation->getYearProgress()]]) ?>">
                             <div class="HeaderDonate-progressBarBorder">
                                 <div class="HeaderDonate-progressBar" style="width: <?= $donation->getYearProgress() . '%' ?>"></div>
                             </div>
-                            <div class="HeaderDonate-percent u-colorWarning"><?= Lang::get('donate.donate') ?></div>
+                            <div class="HeaderDonate-percent"><?= t('server.donate.donate') ?></div>
                         </a>
                     </li>
                 </ul>
                 <ul class="HeaderStat HeaderInfo-middle">
-                    <li class="HeaderStat-item is-seeding" data-tooltip="<?= Lang::get('global.uploaded') ?>">
+                    <li class="HeaderStat-item is-seeding" data-tooltip="<?= t('server.common.uploaded') ?>">
                         <a class="HeaderStat-link LinkHeader Link" href="torrents.php?type=seeding&amp;userid=<?= G::$LoggedUser['ID'] ?>">
                             <?= icon('uploaded') ?>
                             <span class="HeaderStat-value is-uploaded" id="header-uploaded-value" data-value="<?= G::$LoggedUser['BytesUploaded'] ?>">
@@ -401,7 +388,7 @@ if ($_REQUEST['action']) {
                             </span>
                         </a>
                     </li>
-                    <li class="HeaderStat-item is-leeching" data-tooltip="<?= Lang::get('global.downloaded') ?>">
+                    <li class="HeaderStat-item is-leeching" data-tooltip="<?= t('server.common.downloaded') ?>">
                         <a class="HeaderStat-link LinkHeader Link" href="torrents.php?type=leeching&amp;userid=<?= G::$LoggedUser['ID'] ?>">
                             <?= icon('downloaded') ?>
                             <span class="HeaderStat-value is-downloaded" id="header-downloaded-value" data-value="<?= G::$LoggedUser['BytesDownloaded'] ?>">
@@ -410,7 +397,7 @@ if ($_REQUEST['action']) {
                         </a>
                     </li>
 
-                    <li class="HeaderStat-item is-ratio" data-tooltip="<?= Lang::get('global.ratio') ?>">
+                    <li class="HeaderStat-item is-ratio" data-tooltip="<?= t('server.common.ratio') ?>">
                         <a class="HeaderStat-link LinkHeader Link">
                             <?= icon('ratio') ?>
                             <span class="HeaderStat-value is-ratio" id="header-ratio-value" data-value="<?= Format::get_ratio(G::$LoggedUser['BytesUploaded'], G::$LoggedUser['BytesDownloaded']) ?>">
@@ -419,7 +406,7 @@ if ($_REQUEST['action']) {
                         </a>
                     </li>
                     <? if (((int) G::$LoggedUser['RequiredRatio']) !== 0) { ?>
-                        <li class="HeaderStat-item is-requiredRatio" data-tooltip="<?= Lang::get('global.required_ratio') ?>">
+                        <li class="HeaderStat-item is-requiredRatio" data-tooltip="<?= t('server.common.required_ratio') ?>">
                             <a class="HeaderStat-link LinkHeader Link" href="rules.php?p=ratio">
                                 <?= icon('required-ratio') ?>
                                 <span class="HeaderStat-value is-required-ratio" id="header-required-ratio-value" data-value="<?= G::$LoggedUser['RequiredRatio'] ?>">
@@ -428,7 +415,7 @@ if ($_REQUEST['action']) {
                             </a>
                         </li>
                     <? } ?>
-                    <li class="HeaderStat-item is-bp" data-tooltip="<?= Lang::get('global.bonus') ?>">
+                    <li class="HeaderStat-item is-bp" data-tooltip="<?= t('server.common.bonus') ?>">
                         <a class="HeaderStat-link LinkHeader Link" href="/bonus.php?action=bprates">
                             <?= icon('bonus-active') ?>
                             <span class="HeaderStat-value is-bp" id="header-bp-value" data-value="<?= G::$LoggedUser['BonusPoints'] ?>">
@@ -436,10 +423,23 @@ if ($_REQUEST['action']) {
                             </span>
                         </a>
                     </li>
+                    <?
+                    if (G::$LoggedUser['FLTokens'] > 0) { ?>
+                        <li class="HeaderStat-item is-bp" data-tooltip="<?= t('server.common.fltoken') ?>">
+                            <a class="HeaderStat-link LinkHeader Link" href="userhistory.php?action=token_history&amp;userid=<?= G::$LoggedUser['ID'] ?>">
+                                <?= icon('token') ?>
+                                <span class="HeaderStat-value is-bp" id="header-bp-value" data-value="<?= G::$LoggedUser['TimedTokens'] + G::$LoggedUser['FLTokens'] ?>">
+                                    <?
+                                    $Tokens = G::$LoggedUser['TimedTokens'] == 0 ? G::$LoggedUser['FLTokens'] : (G::$LoggedUser['FLTokens'] - G::$LoggedUser['TimedTokens']) . '+' . G::$LoggedUser['TimedTokens'];
+                                    echo $Tokens; ?>
+                                </span>
+                            </a>
+                        </li>
+                    <?    } ?>
                     <? if (CONFIG['ENABLE_HNR']) { ?>
                         <li class="HeaderStat-item isHnr">
                             <a class="HeaderStat-link LinkHeader Link" href="rules.php?p=ratio">
-                                <i data-tooltip="<?= Lang::get('torrents.hit_and_run') ?>">
+                                <i data-tooltip="<?= t('server.torrents.hit_and_run') ?>">
                                     <?= icon("User/hnr") ?>
                                 </i>
                             </a>
@@ -462,21 +462,21 @@ if ($_REQUEST['action']) {
                 ?>
                 <ul class="HeaderQuickAction HeaderInfo-right">
                     <li class="HeaderQuickAction-item is-upload brackets <?= Format::add_class($PageID, array('upload'), 'active', false) ?>">
-                        <a class="HeaderQuickAction-iconLink LinkHeader Link u-center u-heightFull" href="upload.php" data-tooltip="<?= Lang::get('global.menu_upload_title') ?>">
+                        <a class="HeaderQuickAction-iconLink LinkHeader Link u-center u-heightFull" href="upload.php" data-tooltip="<?= t('server.common.menu_upload_title') ?>">
                             <?= icon('upload') ?>
                         </a>
                     </li>
                     <li class="HeaderQuickAction-item is-invite brackets <?= Format::add_class($PageID, array('user', 'invite'), 'active', false) ?>">
-                        <a class='HeaderQuickAction-iconLink LinkHeader Link u-center u-heightFull' href="user.php?action=invite" data-tooltip="<?= Lang::get('global.invite') ?><?= $Invites ?>">
+                        <a class='HeaderQuickAction-iconLink LinkHeader Link u-center u-heightFull' href="user.php?action=invite" data-tooltip="<?= t('server.common.invite') ?><?= $Invites ?>">
                             <?= icon('invite') ?>
                         </a>
                     </li>
                     <li class="HeaderQuickAction-item is-imageHost brackets">
-                        <a class="HeaderQuickAction-iconLink LinkHeader Link u-center u-heightFull" href="upload.php?action=image" data-tooltip="<?= Lang::get('global.image_host') ?>">
+                        <a class="HeaderQuickAction-iconLink LinkHeader Link u-center u-heightFull" href="upload.php?action=image" data-tooltip="<?= t('server.common.image_host') ?>">
                             <?= icon('image-host') ?>
                         </a>
                     </li>
-                    <li class="HeaderQuickAction-item is-language brackets Dropdown Dropdown-trigger" data-tooltip="<?= Lang::get('common.language') ?>">
+                    <li class="HeaderQuickAction-item is-language brackets Dropdown Dropdown-trigger" data-tooltip="<?= t('server.common.language') ?>">
                         <a class="HeaderQuickAction-iconLink LinkHeader Link u-center u-heightFull">
                             <?= icon('Common/language') ?>
                         </a>
@@ -485,7 +485,7 @@ if ($_REQUEST['action']) {
                             <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
                             <div class="DropdownMenu Overlay">
                                 <? foreach (Lang::LANGS as $Lang) { ?>
-                                    <input class="DropdownMenu-item is-lang<?= $Lang ?>" type="submit" name="language" value="<?= Lang::get("common.lang_$Lang") ?>" />
+                                    <input class="DropdownMenu-item is-lang<?= $Lang ?>" type="submit" name="language" value="<?= t("server.common.lang_$Lang") ?>" />
                                 <? } ?>
                             </div>
                         </form>
@@ -501,37 +501,36 @@ if ($_REQUEST['action']) {
                             </span>
                         </div>
                         <div class="DropdownMenu Overlay">
-                            <a class="DropdownMenu-item is-profile" href="user.php?id=<?= G::$LoggedUser['ID'] ?>"><?= Lang::get('global.profile') ?></a>
-                            <a class="DropdownMenu-item is-settings" href="user.php?action=edit&amp;userid=<?= G::$LoggedUser['ID'] ?>"><?= Lang::get('global.setting') ?></a>
-                            <a class="DropdownMenu-item is-inbox" href="<?= Inbox::get_inbox_link(); ?>"> <?= Lang::get('global.inbox') ?></a>
-                            <a class="DropdownMenu-item is-staffpm" href="staffpm.php"> <?= Lang::get('global.staffpm') ?></a>
+                            <a class="DropdownMenu-item is-profile" href="user.php?id=<?= G::$LoggedUser['ID'] ?>"><?= t('server.common.profile') ?></a>
+                            <a class="DropdownMenu-item is-settings" href="user.php?action=edit&amp;userid=<?= G::$LoggedUser['ID'] ?>"><?= t('server.common.setting') ?></a>
+                            <a class="DropdownMenu-item is-inbox" href="<?= Inbox::get_inbox_link(); ?>"> <?= t('server.common.inbox') ?></a>
+                            <a class="DropdownMenu-item is-staffpm" href="staffpm.php"> <?= t('server.common.staffpm') ?></a>
                             <?
                             if (CONFIG['ENABLE_BADGE']) {
                             ?>
-                                <a class="DropdownMenu-item is-badges" href="badges.php"> <?= Lang::get('global.my_badges') ?></a>
+                                <a class="DropdownMenu-item is-badges" href="badges.php"> <?= t('server.common.my_badges') ?></a>
                             <?
                             }
                             ?>
-                            <a class="DropdownMenu-item is-uploaded" href="torrents.php?type=uploaded&amp;userid=<?= G::$LoggedUser['ID'] ?>"> <?= Lang::get('global.my_uploaded') ?></a>
-                            <a class="DropdownMenu-item is-bookmarks" href="bookmarks.php?type=torrents"> <?= Lang::get('global.my_bookmarks') ?></a>
-                            <? if (check_perms('site_torrents_notify')) { ?> <a class="DropdownMenu-item is-notify" href="user.php?action=notify"> <?= Lang::get('global.my_notify') ?></a> <?    } ?>
+                            <a class="DropdownMenu-item is-uploaded" href="torrents.php?type=uploaded&amp;userid=<?= G::$LoggedUser['ID'] ?>"> <?= t('server.common.my_uploaded') ?></a>
+                            <a class="DropdownMenu-item is-bookmarks" href="bookmarks.php?type=torrents"> <?= t('server.common.my_bookmarks') ?></a>
+                            <? if (check_perms('site_torrents_notify')) { ?> <a class="DropdownMenu-item is-notify" href="user.php?action=notify"> <?= t('server.common.my_notify') ?></a> <?    } ?>
                             <?
                             $ClassNames = $NewSubscriptions ? 'new-subscriptions' : '';
                             $ClassNames = trim($ClassNames . Format::add_class($PageID, array('userhistory', 'subscriptions'), 'active', false));
                             ?>
-                            <a class="DropdownMenu-item is-subscriptions <?= $ClassNames ?>" href="userhistory.php?action=subscriptions"> <?= Lang::get('global.my_subscriptions') ?></a>
-                            <a class="DropdownMenu-item is-comments" href="comments.php"> <?= Lang::get('global.my_comments') ?></a>
-                            <a class="DropdownMenu-item is-friends" href="friends.php"> <?= Lang::get('global.my_friends') ?></a>
-                            <a class="DropdownMenu-item is-missing" href="torrents.php?type=missing"> <?= Lang::get('global.missing') ?></a>
-                            <? if (isset(G::$LoggedUser['SSPAccess'])) { ?> <a class="DropdownMenu-item is-ssp" href="ssp.php"> <?= Lang::get('global.ssp') ?></a> <?  } ?>
-                            <a class="DropdownMenu-item is-logout" href="logout.php?auth=<?= G::$LoggedUser['AuthKey'] ?>"> <?= Lang::get('global.logout') ?></a>
+                            <a class="DropdownMenu-item is-subscriptions <?= $ClassNames ?>" href="userhistory.php?action=subscriptions"> <?= t('server.common.my_subscriptions') ?></a>
+                            <a class="DropdownMenu-item is-comments" href="comments.php"> <?= t('server.common.my_comments') ?></a>
+                            <a class="DropdownMenu-item is-friends" href="friends.php"> <?= t('server.common.my_friends') ?></a>
+                            <a class="DropdownMenu-item is-missing" href="torrents.php?type=missing"> <?= t('server.common.missing') ?></a>
+                            <a class="DropdownMenu-item is-logout" href="logout.php?auth=<?= G::$LoggedUser['AuthKey'] ?>"> <?= t('server.common.logout') ?></a>
                         </div>
                     </li>
                 </ul>
             </div>
 
             <div class="HeaderLogo">
-                <a class="HeaderLogo-link" href="index.php"></a>
+                <a class="HeaderLogo-link Logo" href="index.php"></a>
             </div>
 
             <?
@@ -565,40 +564,41 @@ if ($_REQUEST['action']) {
                             <? if ($UseAdvancedSearch) { ?>
                                 <input type="hidden" name="action" value="advanced" />
                             <?    } ?>
-                            <input class="Input InputHeader" type="text" id="torrentssearch" accesskey="t" spellcheck="false" placeholder="<?= Lang::get('index.moviegroups') ?>" name="<?= $UseAdvancedSearch ? 'groupname' : 'searchstr' ?>" size="17" />
+                            <input class="Input InputHeader" type="text" id="torrentssearch" autocomplete="off" <?= Users::has_autocomplete_enabled('search');
+                                                                                                                ?> accesskey="t" spellcheck="false" placeholder="<?= t('server.index.moviegroups') ?>" name="<?= $UseAdvancedSearch ? 'groupname' : 'searchstr' ?>" size="17" />
                         </form>
                     </li>
                     <li class="HeaderSearchList-item" id="searchbar_artists">
                         <span class="hidden">Artist: </span>
                         <form class="HeaderSearch-form" name="artists" action="artist.php" method="get">
-                            <input class="Input InputHeader" id="artistsearch" <?= Users::has_autocomplete_enabled('search');
-                                                                                ?> accesskey="a" spellcheck="false" autocomplete="off" placeholder="<?= Lang::get('global.artists') ?>" type="text" name="artistname" size="17" />
+                            <input class="Input InputHeader" id="artistsearch" autocomplete="off" <?= Users::has_autocomplete_enabled('search');
+                                                                                                    ?> accesskey="a" spellcheck="false" placeholder="<?= t('server.common.artists') ?>" type="text" name="artistname" size="17" />
                         </form>
                     </li>
                     <li class="HeaderSearchList-item" id="searchbar_requests">
                         <span class="hidden">Requests: </span>
                         <form class="HeaderSearch-form" name="requests" action="requests.php" method="get">
-                            <input class="Input InputHeader" type="text" id="requestssearch" spellcheck="false" accesskey="r" placeholder="<?= Lang::get('global.requests') ?>" name="search" size="17" />
+                            <input class="Input InputHeader" type="text" id="requestssearch" spellcheck="false" accesskey="r" placeholder="<?= t('server.common.requests') ?>" name="search" size="17" />
                         </form>
                     </li>
                     <li class="HeaderSearchList-item" id="searchbar_forums">
                         <span class="hidden">Forums: </span>
                         <form class="HeaderSearch-form" name="forums" action="forums.php" method="get">
                             <input value="search" type="hidden" name="action" />
-                            <input class="Input InputHeader" type="text" id="forumssearch" accesskey="f" placeholder="<?= Lang::get('global.forums') ?>" name="search" size="17" />
+                            <input class="Input InputHeader" type="text" id="forumssearch" accesskey="f" placeholder="<?= t('server.common.forums') ?>" name="search" size="17" />
                         </form>
                     </li>
                     <li class="HeaderSearchList-item" id="searchbar_log">
                         <span class="hidden">Log: </span>
                         <form class="HeaderSearch-form" name="log" action="log.php" method="get">
-                            <input class="Input InputHeader" type="text" id="logsearch" accesskey="l" placeholder="<?= Lang::get('global.log') ?>" name="search" size="17" />
+                            <input class="Input InputHeader" type="text" id="logsearch" accesskey="l" placeholder="<?= t('server.common.log') ?>" name="search" size="17" />
                         </form>
                     </li>
                     <li class="HeaderSearchList-item" id="searchbar_users">
                         <span class="hidden">Users: </span>
                         <form class="HeaderSearch-form" name="users" action="user.php" method="get">
                             <input type="hidden" name="action" value="search" />
-                            <input class="Input InputHeader" type="text" id="userssearch" accesskey="u" placeholder="<?= Lang::get('global.users') ?>" name="search" size="20" />
+                            <input class="Input InputHeader" type="text" id="userssearch" accesskey="u" placeholder="<?= t('server.common.users') ?>" name="search" size="20" />
                         </form>
                     </li>
                 </ul>
@@ -610,7 +610,7 @@ if ($_REQUEST['action']) {
                     <li class="HeaderNavList-item" id="nav_torrents" <?=
                                                                         Format::add_class($PageID, array('torrents', false, false), 'active', true) ?>>
                         <a class="HeaderNav-link LinkHeader Link" href="torrents.php">
-                            <?= Lang::get('index.moviegroups') ?></a>
+                            <?= t('server.index.moviegroups') ?></a>
                     </li>
                     <?
                     if (CONFIG['ENABLE_COLLAGES']) {
@@ -618,7 +618,7 @@ if ($_REQUEST['action']) {
                         <li class="HeaderNavList-item" id="nav_collages" <?=
                                                                             Format::add_class($PageID, array('collages'), 'active', true) ?>>
                             <a class="HeaderNav-link LinkHeader Link" href="collages.php">
-                                <?= Lang::get('global.collages') ?></a>
+                                <?= t('server.common.collages') ?></a>
                         </li>
                     <?
                     }
@@ -626,32 +626,32 @@ if ($_REQUEST['action']) {
                     <li class="HeaderNavList-item" id="nav_requests" <?=
                                                                         Format::add_class($PageID, array('requests'), 'active', true) ?>>
                         <a class="HeaderNav-link LinkHeader Link" href="requests.php">
-                            <?= Lang::get('global.requests') ?></a>
+                            <?= t('server.common.requests') ?></a>
                     </li>
                     <li class="HeaderNavList-item" id="nav_forums" <?=
                                                                     Format::add_class($PageID, array('forums'), 'active', true) ?>>
                         <a class="HeaderNav-link LinkHeader Link" href="forums.php">
-                            <?= Lang::get('global.forums') ?></a>
+                            <?= t('server.common.forums') ?></a>
                     </li>
                     <li class="HeaderNavList-item" id="nav_top10" <?=
                                                                     Format::add_class($PageID, array('top10'), 'active', true) ?>>
                         <a class="HeaderNav-link LinkHeader Link" href="top10.php">
-                            <?= Lang::get('global.top_10') ?></a>
+                            <?= t('server.common.top_10') ?></a>
                     </li>
                     <li class="HeaderNavList-item" id="nav_rules" <?=
                                                                     Format::add_class($PageID, array('rules'), 'active', true) ?>>
                         <a class="HeaderNav-link LinkHeader Link" href="rules.php">
-                            <?= Lang::get('global.rules') ?></a>
+                            <?= t('server.common.rules') ?></a>
                     </li>
                     <li class="HeaderNavList-item" id="nav_wiki" <?=
                                                                     Format::add_class($PageID, array('wiki'), 'active', true) ?>>
                         <a class="HeaderNav-link LinkHeader Link" href="wiki.php">
-                            <?= Lang::get('global.wiki') ?></a>
+                            <?= t('server.common.wiki') ?></a>
                     </li>
                     <li class="HeaderNavList-item" id="nav_staff" <?=
                                                                     Format::add_class($PageID, array('staff'), 'active', true) ?>>
                         <a class="HeaderNav-link LinkHeader Link" href="staff.php">
-                            <?= Lang::get('global.staff') ?></a>
+                            <?= t('server.common.staff') ?></a>
                     </li>
                 </ul>
             </div>

@@ -57,12 +57,10 @@ if (!empty($_REQUEST['action'])) {
             enforce_login();
             include(CONFIG['SERVER_ROOT'] . '/sections/torrents/takeedit.php');
             break;
-
-        case 'newgroup':
+        case 'autocomplete':
             enforce_login();
-            include(CONFIG['SERVER_ROOT'] . '/sections/torrents/takenewgroup.php');
+            include(CONFIG['SERVER_ROOT'] . '/sections/torrents/autocomplete.php');
             break;
-
         case 'peerlist':
             enforce_login();
             include(CONFIG['SERVER_ROOT'] . '/sections/torrents/peerlist.php');
@@ -71,6 +69,10 @@ if (!empty($_REQUEST['action'])) {
         case 'snatchlist':
             enforce_login();
             include(CONFIG['SERVER_ROOT'] . '/sections/torrents/snatchlist.php');
+            break;
+        case 'reportlist':
+            enforce_login();
+            include(CONFIG['SERVER_ROOT'] . '/sections/torrents/reportlist.php');
             break;
 
         case 'downloadlist':

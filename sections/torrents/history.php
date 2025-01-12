@@ -6,11 +6,12 @@ $GroupID = (int)$_GET['groupid'];
 
 $Name = Torrents::group_name(Torrents::get_group($GroupID));
 
-View::show_header(Lang::get('torrents.revision_history_after'), '', 'PageTorrentHistory');
+View::show_header(t('server.torrents.revision_history_after'), '', 'PageTorrentHistory');
 ?>
 <div class="LayoutBody">
     <div class="BodyHeader">
-        <h2 class="BodyHeader-nav"><?= page_title_conn([Lang::get('torrents.revision_history_after'), $Name]) ?></h2>
+        <div class="BodyHeader-nav"><?= t('server.torrents.revision_history_after') ?></div>
+        <div class="BodyHeader-subNav"><?= $Name ?></div>
     </div>
     <?
     RevisionHistoryView::render_revision_history(RevisionHistory::get_revision_history('torrents', $GroupID), "torrents.php?id=$GroupID");

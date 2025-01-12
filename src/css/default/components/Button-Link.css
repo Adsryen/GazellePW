@@ -55,6 +55,7 @@ Loading Button
   align-items: center;
   /* override a */
   text-decoration: none;
+  white-space: no-wrap;
 }
 .Button:hover {
   background: var(--Button-default-onHover-background);
@@ -62,6 +63,9 @@ Loading Button
   border: var(--Button-default-onHover-border);
   box-shadow: var(--Button-default-onHover-boxShadow);
   text-decoration: none;
+}
+.Button:active {
+  transform: scale(0.95);
 }
 .Button:disabled {
   cursor: not-allowed;

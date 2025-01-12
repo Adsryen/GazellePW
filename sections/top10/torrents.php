@@ -21,11 +21,15 @@ if (!empty($_GET['advanced']) && check_perms('site_advanced_top10')) {
     $Limit = (in_array($Limit, array(10, 100, 250)) ? $Limit : 10);
 }
 $Filtered = !empty($Where);
-View::show_header(Lang::get('top10.top') . " $Limit " . Lang::get('top10.top_torrents'), '', 'PageTop10Torrents');
+View::show_header(t('server.top10.top') . " $Limit " . t('server.top10.top_torrents'), '', 'PageTop10Torrents');
 ?>
 <div class="LayoutBody">
     <div class="BodyHeader">
-        <h2 class="BodyHeader-nav"><?= Lang::get('top10.top') ?> <?= $Limit ?> <?= Lang::get('top10.top_torrents') ?></h2>
+        <div class="BodyHeader-nav TorrentViewWrapper"><?= t('server.top10.top') ?> <?= $Limit ?> <?= t('server.top10.top_torrents') ?>
+            <?
+            renderTorrentViewButton(TorrentViewScene::Top10Torrent);
+            ?>
+        </div>
         <? Top10View::render_linkbox("torrents", "BodyNavLinks"); ?>
     </div>
     <?
@@ -50,7 +54,6 @@ View::show_header(Lang::get('top10.top') . " $Limit " . Lang::get('top10.top_tor
 		g.Name,
 		g.CategoryID,
 		g.WikiImage,
-		g.TagList,
 		t.Scene,
 		t.RemasterYear,
 		g.Year,
@@ -87,7 +90,7 @@ View::show_header(Lang::get('top10.top') . " $Limit " . Lang::get('top10.top_tor
                 $TopTorrentsActiveLastDay = false;
             }
         }
-        generate_torrent_table(Lang::get('top10.in_the_past_day', ['Values' => [Lang::get('top10.torrents')]]), 'day', $TopTorrentsActiveLastDay, $Limit);
+        generate_torrent_table(t('server.top10.in_the_past_day', ['Values' => [t('server.top10.torrents')]]), 'day', $TopTorrentsActiveLastDay, $Limit);
     }
     if ($Details == 'all' || $Details == 'week') {
         $TopTorrentsActiveLastWeek = $Cache->get_value('top10tor_week_' . $Limit . $WhereSum . $GroupBySum);
@@ -111,7 +114,7 @@ View::show_header(Lang::get('top10.top') . " $Limit " . Lang::get('top10.top_tor
                 $TopTorrentsActiveLastWeek = false;
             }
         }
-        generate_torrent_table(Lang::get('top10.in_the_past_week', ['Values' => [Lang::get('top10.torrents')]]), 'week', $TopTorrentsActiveLastWeek, $Limit);
+        generate_torrent_table(t('server.top10.in_the_past_week', ['Values' => [t('server.top10.torrents')]]), 'week', $TopTorrentsActiveLastWeek, $Limit);
     }
 
     if ($Details == 'all' || $Details == 'month') {
@@ -135,7 +138,7 @@ View::show_header(Lang::get('top10.top') . " $Limit " . Lang::get('top10.top_tor
                 $TopTorrentsActiveLastMonth = false;
             }
         }
-        generate_torrent_table(Lang::get('top10.in_the_past_month', ['Values' => [Lang::get('top10.torrents')]]), 'month', $TopTorrentsActiveLastMonth, $Limit);
+        generate_torrent_table(t('server.top10.in_the_past_month', ['Values' => [t('server.top10.torrents')]]), 'month', $TopTorrentsActiveLastMonth, $Limit);
     }
 
     if ($Details == 'all' || $Details == 'year') {
@@ -165,7 +168,7 @@ View::show_header(Lang::get('top10.top') . " $Limit " . Lang::get('top10.top_tor
                 $TopTorrentsActiveLastYear = false;
             }
         }
-        generate_torrent_table(Lang::get('top10.in_the_past_year', ['Values' => [Lang::get('top10.torrents')]]), 'year', $TopTorrentsActiveLastYear, $Limit);
+        generate_torrent_table(t('server.top10.in_the_past_year', ['Values' => [t('server.top10.torrents')]]), 'year', $TopTorrentsActiveLastYear, $Limit);
     }
 
     if ($Details == 'all' || $Details == 'overall') {
@@ -194,7 +197,7 @@ View::show_header(Lang::get('top10.top') . " $Limit " . Lang::get('top10.top_tor
                 $TopTorrentsActiveAllTime = false;
             }
         }
-        generate_torrent_table(Lang::get('top10.most_torrents', ['Values' => [Lang::get('top10.torrents')]]), 'overall', $TopTorrentsActiveAllTime, $Limit);
+        generate_torrent_table(t('server.top10.most_torrents', ['Values' => [t('server.top10.torrents')]]), 'overall', $TopTorrentsActiveAllTime, $Limit);
     }
 
     if (($Details == 'all' || $Details == 'snatched') && !$Filtered) {
@@ -217,7 +220,7 @@ View::show_header(Lang::get('top10.top') . " $Limit " . Lang::get('top10.top_tor
                 $TopTorrentsSnatched = false;
             }
         }
-        generate_torrent_table(Lang::get('top10.most_snatched', ['Values' => [Lang::get('top10.torrents')]]), 'snatched', $TopTorrentsSnatched, $Limit);
+        generate_torrent_table(t('server.top10.most_snatched', ['Values' => [t('server.top10.torrents')]]), 'snatched', $TopTorrentsSnatched, $Limit);
     }
 
     if (($Details == 'all' || $Details == 'data') && !$Filtered) {
@@ -244,7 +247,7 @@ View::show_header(Lang::get('top10.top') . " $Limit " . Lang::get('top10.top_tor
                 $TopTorrentsTransferred = false;
             }
         }
-        generate_torrent_table(Lang::get('top10.most_data', ['Values' => [Lang::get('top10.torrents')]]), 'data', $TopTorrentsTransferred, $Limit);
+        generate_torrent_table(t('server.top10.most_data', ['Values' => [t('server.top10.torrents')]]), 'data', $TopTorrentsTransferred, $Limit);
     }
 
     if (($Details == 'all' || $Details == 'seeded') && !$Filtered) {
@@ -267,7 +270,7 @@ View::show_header(Lang::get('top10.top') . " $Limit " . Lang::get('top10.top_tor
                 $TopTorrentsSeeded = false;
             }
         }
-        generate_torrent_table(Lang::get('top10.most_seed', ['Values' => [Lang::get('top10.torrents')]]), 'seeded', $TopTorrentsSeeded, $Limit);
+        generate_torrent_table(t('server.top10.most_seed', ['Values' => [t('server.top10.torrents')]]), 'seeded', $TopTorrentsSeeded, $Limit);
     }
     ?>
 </div>
@@ -276,48 +279,48 @@ View::show_footer();
 
 // generate a table based on data from most recent query to $DB
 function generate_torrent_table($Caption, $Tag, $Details, $Limit) {
-    if (empty($Details)) {
-        return null;
-    }
 ?>
-    <h3><?= Lang::get('top10.top') ?> <?= "$Limit $Caption" ?>
-        <? if (empty($_GET['advanced'])) { ?>
-            <small class="top10_quantity_links">
-                <?
-                switch ($Limit) {
-                    case 100: ?>
-                        - <a href="top10.php?details=<?= $Tag ?>" class="brackets"><?= Lang::get('top10.top') ?> 10</a>
-                        - <span class="brackets"><?= Lang::get('top10.top') ?> 100</span>
-                        - <a href="top10.php?type=torrents&amp;limit=250&amp;details=<?= $Tag ?>" class="brackets"><?= Lang::get('top10.top') ?> 250</a>
-                    <? break;
-                    case 250: ?>
-                        - <a href="top10.php?details=<?= $Tag ?>" class="brackets"><?= Lang::get('top10.top') ?> 10</a>
-                        - <a href="top10.php?type=torrents&amp;limit=100&amp;details=<?= $Tag ?>" class="brackets"><?= Lang::get('top10.top') ?> 100</a>
-                        - <span class="brackets"><?= Lang::get('top10.top') ?> 250</span>
-                    <? break;
-                    default: ?>
-                        - <span class="brackets"><?= Lang::get('top10.top') ?> 10</span>
-                        - <a href="top10.php?type=torrents&amp;limit=100&amp;details=<?= $Tag ?>" class="brackets"><?= Lang::get('top10.top') ?> 100</a>
-                        - <a href="top10.php?type=torrents&amp;limit=250&amp;details=<?= $Tag ?>" class="brackets"><?= Lang::get('top10.top') ?> 250</a>
-                <? } ?>
-            </small>
-        <? } ?>
-    </h3>
-    <?
-    $TorrentLists = [];
-    if ($Details) {
-        $GroupIDs = [];
-        foreach ($Details as $Detail) {
-            $GroupIDs[] = $Detail['ID'];
-        }
-        $Groups = Torrents::get_groups($GroupIDs);
-        foreach ($Details as $Detail) {
-            $TorrentLists[] = Torrents::convert_torrent($Groups[$Detail['ID']], $Detail['TorrentID']);
-        }
-    }
-    $tableRender = new UngroupTorrentSimpleListView($TorrentLists);
-    $tableRender->with_number(true)->render([
-        'NoActions' => true
-    ]);
-    ?>
+    <div class="Group">
+        <div class="Group-header">
+            <div class="Group-headerTitle"><?= t('server.top10.top') ?> <?= "$Limit $Caption" ?></div>
+            <? if (empty($_GET['advanced'])) { ?>
+                <small class="Group-headerActions top10_quantity_links">
+                    <?
+                    switch ($Limit) {
+                        case 100: ?>
+                            <a href="top10.php?details=<?= $Tag ?>" class="brackets"><?= t('server.top10.top') ?> 10</a>
+                            - <span class="brackets"><?= t('server.top10.top') ?> 100</span>
+                            - <a href="top10.php?type=torrents&amp;limit=250&amp;details=<?= $Tag ?>" class="brackets"><?= t('server.top10.top') ?> 250</a>
+                        <? break;
+                        case 250: ?>
+                            <a href="top10.php?details=<?= $Tag ?>" class="brackets"><?= t('server.top10.top') ?> 10</a>
+                            - <a href="top10.php?type=torrents&amp;limit=100&amp;details=<?= $Tag ?>" class="brackets"><?= t('server.top10.top') ?> 100</a>
+                            - <span class="brackets"><?= t('server.top10.top') ?> 250</span>
+                        <? break;
+                        default: ?>
+                            <span class="brackets"><?= t('server.top10.top') ?> 10</span>
+                            - <a href="top10.php?type=torrents&amp;limit=100&amp;details=<?= $Tag ?>" class="brackets"><?= t('server.top10.top') ?> 100</a>
+                            - <a href="top10.php?type=torrents&amp;limit=250&amp;details=<?= $Tag ?>" class="brackets"><?= t('server.top10.top') ?> 250</a>
+                    <? } ?>
+                </small>
+            <? } ?>
+        </div>
+        <div class="Group-body">
+            <?
+            $TorrentLists = [];
+            if ($Details) {
+                $GroupIDs = [];
+                foreach ($Details as $Detail) {
+                    $GroupIDs[] = $Detail['ID'];
+                }
+                $Groups = Torrents::get_groups($GroupIDs);
+                foreach ($Details as $Detail) {
+                    $TorrentLists[] = Torrents::convert_torrent($Groups[$Detail['ID']], $Detail['TorrentID']);
+                }
+            }
+            $tableRender = newUngroupTorrentView(TorrentViewScene::Top10Torrent, $TorrentLists);
+            $tableRender->with_number(true)->render([]);
+            ?>
+        </div>
+    </div>
 <? } ?>

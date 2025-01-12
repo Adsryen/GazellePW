@@ -28,33 +28,34 @@ class CommentsView {
      */
     public static function render_comment($AuthorID, $PostID, $Body, $AddedTime, $EditedUserID, $EditedTime, $Link, $Unread = false, $Header = '', $Tools = true) {
         $UserInfo = Users::user_info($AuthorID);
-        $Header = '<strong>' . Users::format_username($AuthorID, true, true, true, true, false, false, false, true) . '</strong> ' . time_diff($AddedTime) . $Header;
+        $Header = '<strong>' . Users::format_username($AuthorID, true, true, true, true, false, false, false, true) . '</strong> ' . $Header;
 ?>
-        <div class="TableContainer">
-            <table class="TableForumPost Table <?= (!Users::has_avatars_enabled() ? ' noavatar' : '') . ($Unread ? ' forum_unread' : '') ?>" id="post<?= $PostID ?>">
+        <div class="TableContainer" id="post<?= $PostID ?>">
+            <table class="TableForumPost Table <?= (!Users::has_avatars_enabled() ? ' noavatar' : '') . ($Unread ? ' forum_unread' : '') ?>">
                 <tr class="Table-rowHeader">
                     <td class="Table-cell" colspan="<?= (Users::has_avatars_enabled() ? 2 : 1) ?>">
                         <div class="TableForumPostHeader">
                             <div class="TableForumPostHeader-info">
                                 <a class="TableForumPost-postId" href="<?= $Link ?>">#<?= $PostID ?></a>
                                 <?= $Header ?>
+                                - <?= time_diff($AddedTime) ?>
                             </div>
                             <div class="TableForumPostHeader-actions" id="bar<?= $PostID ?>">
                                 <? if ($Tools) { ?>
-                                    <a href="#quickpost" onclick="Quote('<?= $PostID ?>','<?= $UserInfo['Username'] ?>', true);" class="brackets"><?= Lang::get('forums.quote') ?></a>
+                                    <a href="#quickpost" onclick="Quote('<?= $PostID ?>','<?= $UserInfo['Username'] ?>', true);" class="brackets"><?= t('server.forums.quote') ?></a>
                                     <? if ($AuthorID == G::$LoggedUser['ID'] || check_perms('site_moderate_forums')) { ?>
-                                        - <a href="#post<?= $PostID ?>" onclick="Edit_Form('<?= $PostID ?>','<?= $Key ?>');" class="brackets"><?= Lang::get('global.edit') ?></a>
+                                        - <a href="#post<?= $PostID ?>" onclick="globalapp.editForm('<?= $PostID ?>');" class="brackets"><?= t('server.common.edit') ?></a>
                                     <? } ?>
                                     <? if (check_perms('site_moderate_forums')) { ?>
-                                        - <a href="#post<?= $PostID ?>" onclick="Delete('<?= $PostID ?>');" class="brackets"><?= Lang::get('global.delete') ?></a>
+                                        - <a href="#post<?= $PostID ?>" onclick="Delete('<?= $PostID ?>');" class="brackets"><?= t('server.common.delete') ?></a>
                                     <? } ?>
-                                    - <a href="reports.php?action=report&amp;type=comment&amp;id=<?= $PostID ?>" class="brackets"><?= Lang::get('forums.report') ?></a>
+                                    - <a href="reports.php?action=report&amp;type=comment&amp;id=<?= $PostID ?>" class="brackets"><?= t('server.forums.report') ?></a>
                                     <? if (check_perms('users_warn') && $AuthorID != G::$LoggedUser['ID'] && G::$LoggedUser['Class'] >= $UserInfo['Class']) { ?>
                                         <form class="manage_form hidden" name="user" id="warn<?= $PostID ?>" action="comments.php" method="post">
                                             <input type="hidden" name="action" value="warn" />
                                             <input type="hidden" name="postid" value="<?= $PostID ?>" />
                                         </form>
-                                        - <a href="#" onclick="$('#warn<?= $PostID ?>').raw().submit(); return false;" class="brackets"><?= Lang::get('forums.warn') ?></a>
+                                        - <a href="#" onclick="$('#warn<?= $PostID ?>').raw().submit(); return false;" class="brackets"><?= t('server.forums.warn') ?></a>
                                     <? } ?>
                                 <? } ?>
                             </div>
@@ -71,16 +72,25 @@ class CommentsView {
                             <div class="TableForumPostBody-text HtmlText PostArticle">
                                 <?= Text::full_format($Body) ?>
                             </div>
+                            <form class="TableForumPostBody-edit hidden" id="edit_form_<?= $PostID ?>">
+                                <input type="hidden" name="auth" value="<?= G::$LoggedUser['AuthKey'] ?>" />
+                                <input type="hidden" name="key" value="<?= $Key ?>" />
+                                <input type="hidden" name="postid" value="<?= $PostID ?>" />
+                                <? new TEXTAREA_PREVIEW('body', "edit_content_$PostID", '', 60, 8, true, true, false); ?>
+                            </form>
                             <div class="TableForumPostBody-actions">
                                 <? if ($EditedUserID) { ?>
                                     <div class="TableForumPostBody-divider"></div>
                                     <span>
                                         <? if (check_perms('site_admin_forums')) { ?>
                                             <a href="#content<?= $PostID ?>" onclick="LoadEdit('<?= substr($Link, 0, strcspn($Link, '.')) ?>', <?= $PostID ?>, 1); return false;">&laquo;</a>
-                                        <?          } ?>
-                                        <?= Lang::get('forums.last_edited_by_before') ?><?= Users::format_username($EditedUserID, false, false, false) ?><?= Lang::get('forums.last_edited_by_after') ?> <?= time_diff($EditedTime, 2, true, true) ?>
+                                        <? } ?>
+                                        <?= t('server.forums.last_edited_by', ['Values' => [
+                                            Users::format_username($EditedUserID, false, false, false)
+                                        ]]) ?>
+                                        <?= time_diff($EditedTime, 2, true, true) ?>
                                     </span>
-                                <?      } ?>
+                                <? } ?>
                             </div>
                         </div>
                     </td>

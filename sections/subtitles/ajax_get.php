@@ -1,6 +1,8 @@
 <?
+
+use Gazelle\Torrent\Subtitle;
+
 $TorrentID = isset($_GET['torrentid']) ? $_GET['torrentid'] : null;
-// TODO by qwerty 获取失败
 if (!$TorrentID) {
     die();
 }
@@ -12,18 +14,18 @@ if (empty($AllSubtitles)) {
 ?>
 <table class="TableSubtitle Table" id="subtitle_browse_table">
     <tr class="Table-rowHeader">
-        <td class="Table-cellLeft TableSubtitle-cellLanguage Table-cell"><?= Lang::get('global.language') ?></td>
-        <td class="TableSubtitle-cellName Table-cell"><?= Lang::get('subtitles.subtitle_names') ?></td>
-        <td class="TableSubtitle-celllFormat Table-cell Table-cellRight"><?= Lang::get('global.format') ?></td>
-        <td class="TableSubtitle-cellSize Table-cell Table-cellRight"><?= Lang::get('global.size') ?></td>
+        <td class="Table-cellLeft TableSubtitle-cellLanguage Table-cell"><?= t('server.common.language') ?></td>
+        <td class="TableSubtitle-cellName Table-cell"><?= t('server.subtitles.subtitle_names') ?></td>
+        <td class="TableSubtitle-celllFormat Table-cell Table-cellRight"><?= t('server.common.format') ?></td>
+        <td class="TableSubtitle-cellSize Table-cell Table-cellRight"><?= t('server.common.size') ?></td>
     </tr>
     <?
 
-    $Labels = ['chinese_simplified', 'chinese_traditional', 'english', 'japanese', 'korean', 'no_subtitles', 'arabic', 'brazilian_port', 'bulgarian', 'croatian', 'czech', 'danish', 'dutch', 'estonian', 'finnish', 'french', 'german', 'greek', 'hebrew', 'hindi', 'hungarian', 'icelandic', 'indonesian', 'italian', 'latvian', 'lithuanian', 'norwegian', 'persian', 'polish', 'portuguese', 'romanian', 'russian', 'serbian', 'slovak', 'slovenian', 'spanish', 'swedish', 'thai', 'turkish', 'ukrainian', 'vietnamese'];
+    $Labels = Subtitle::allItem();
     foreach ($AllSubtitles as $Subtitle) {
         $LanguageArray = explode(',', $Subtitle['languages']);
-        $IsNew = time_ago($Subtitle['upload_time']) < 60;
-        $CanRM = check_perms('users_mod');
+        $IsNew = time_ago($Subtitle['upload_time']) < 600;
+        $CanRM = check_perms('users_mod') || $Subtitle['uploader'] == $LoggedUser['ID'];
         $UserInfo = Users::user_info($Subtitle['uploader']);
         $UploaderName = $UserInfo['Username'];
         if ($UploaderName == '') {
@@ -35,19 +37,19 @@ if (empty($AllSubtitles)) {
                 <?
                 foreach ($LanguageArray as $Language) {
                 ?>
-                    <?= icon("flag/$Language") ?>
+                    <?= Subtitle::icon($Language) ?>
                 <?
                 }
                 ?>
             </td>
-            <td class="TableSubtitle-cellName Table-cell" data-tooltip="<?= Lang::get('torrents.upload_by_before') . $UploaderName . Lang::get('torrents.upload_by_after') . time_diff($Subtitle['upload_time'], 2, false)  . ' | ' . Lang::get('subtitles.times_of_download') . $Subtitle['download_times'] ?>">
+            <td class="TableSubtitle-cellName Table-cell" data-tooltip="<?= t('server.torrents.upload_by', ['Values' => [$UploaderName]])  . time_diff($Subtitle['upload_time'], 2, false)  . ' | ' . t('server.subtitles.times_of_download') . $Subtitle['download_times'] ?>">
                 <span class="floatright">
                     <span>[ </span>
-                    <a href="subtitles.php?action=download&id=<?= $Subtitle['id'] ?>" data-tooltip="<?= Lang::get('global.download') ?>">DL</a>
-                    <?= $CanRM ? '| <a href="subtitles.php?action=delete&id=' . $Subtitle['id'] . '"  data-tooltip="' . Lang::get('global.remove') . '">RM</a> ' : '' ?>]
+                    <a href="subtitles.php?action=download&id=<?= $Subtitle['id'] ?>" data-tooltip="<?= t('server.common.download') ?>">DL</a>
+                    <?= $CanRM ? '| <a href="subtitles.php?action=delete&id=' . $Subtitle['id'] . '"  data-tooltip="' . t('server.common.remove') . '">RM</a> ' : '' ?>]
                 </span>
                 <?= $Subtitle['name'] . ' ' ?>
-                <strong class="u-colorWarning"><?= ($IsNew ?  Lang::get('subtitles.new')  : '') ?></strong>
+                <strong class="u-colorWarning"><?= ($IsNew ?  t('server.subtitles.new')  : '') ?></strong>
             </td>
             <td class="TableSubtitle-cellFormat Table-cell Table-cellRight"><?= $Subtitle['format'] ?></td>
             <td class="TableSubtitle-cellSize Table-cell Table-cellRight"><?= Format::get_size($Subtitle['size']) ?></td>

@@ -11,6 +11,8 @@
  * Then it just inserts the report to the DB and increments the counter.
  */
 
+use Gazelle\Manager\ActionTrigger;
+
 authorize();
 
 if (!is_number($_POST['torrentid'])) {
@@ -42,7 +44,7 @@ if (!isset($_POST['type'])) {
 foreach ($ReportType['report_fields'] as $Field => $Value) {
     if ($Value == '1') {
         if (empty($_POST[$Field])) {
-            $Err = Lang::get('reportsv2.you_are_missing_a_required_filed_for_a_report_1') . "$Field" . Lang::get('reportsv2.you_are_missing_a_required_filed_for_a_report_2') . $ReportType['title'] . Lang::get('reportsv2.you_are_missing_a_required_filed_for_a_report_3');
+            $Err = t('server.reportsv2.you_are_missing_a_required_filed_for_a_report', ['Values' => [$Field, $ReportType['title']]]);
         }
     }
 }
@@ -51,10 +53,10 @@ if (!empty($_POST['sitelink'])) {
     if (preg_match_all('/' . TORRENT_REGEX . '/i', $_POST['sitelink'], $Matches)) {
         $ExtraIDs = implode(' ', $Matches[2]);
         if (in_array($TorrentID, $Matches[2])) {
-            $Err = Lang::get('reportsv2.the_extra_pl_you_gave_included_the_link_to_the_torrent_you_are_reporting');
+            $Err = t('server.reportsv2.the_extra_pl_you_gave_included_the_link_to_the_torrent_you_are_reporting');
         }
     } else {
-        $Err = Lang::get('reportsv2.the_pl_was_incorrect_it_should_look_like_torrents_php_torrentid_12345') . site_url() . "torrents.php?torrentid=12345";
+        $Err = t('server.reportsv2.the_pl_was_incorrect_it_should_look_like_torrents_php_torrentid_12345') . site_url() . "torrents.php?torrentid=12345";
     }
 } else {
     $ExtraIDs = '';
@@ -66,7 +68,7 @@ if (!empty($_POST['link'])) {
     if (preg_match_all('/' . URL_REGEX . '/is', $_POST['link'], $Matches)) {
         $Links = implode(' ', $Matches[0]);
     } else {
-        $Err = Lang::get('reportsv2.the_extra_links_you_provided_were_not_links');
+        $Err = t('server.reportsv2.the_extra_links_you_provided_were_not_links');
     }
 } else {
     $Links = '';
@@ -76,7 +78,7 @@ if (!empty($_POST['image'])) {
     if (preg_match("/^(" . IMAGE_REGEX . ")( " . IMAGE_REGEX . ")*$/is", trim($_POST['image']), $Matches)) {
         $Images = $Matches[0];
     } else {
-        $Err = Lang::get('reportsv2.the_extra_image_links_you_provided_were_not_links_to_images');
+        $Err = t('server.reportsv2.the_extra_image_links_you_provided_were_not_links_to_images');
     }
 } else {
     $Images = '';
@@ -86,7 +88,7 @@ if (!empty($_POST['track'])) {
     if (preg_match('/([0-9]+( [0-9]+)*)|All/is', $_POST['track'], $Matches)) {
         $Tracks = $Matches[0];
     } else {
-        $Err = Lang::get('reportsv2.tracks_should_be_given_in_a_space_separated_list_of_numbers_with_no_other_characters');
+        $Err = t('server.reportsv2.tracks_should_be_given_in_a_space_separated_list_of_numbers_with_no_other_characters');
     }
 } else {
     $Tracks = '';
@@ -95,7 +97,7 @@ if (!empty($_POST['track'])) {
 if (!empty($_POST['extra'])) {
     $Extra = db_string($_POST['extra']);
 } else {
-    $Err = Lang::get('reportsv2.as_useful_as_blank_reports_are_could_you_be_a_tiny_bit_more_helpful_leave_a_comment');
+    $Err = t('server.reportsv2.as_useful_as_blank_reports_are_could_you_be_a_tiny_bit_more_helpful_leave_a_comment');
 }
 
 $DB->query("
@@ -103,7 +105,7 @@ $DB->query("
 	FROM torrents
 	WHERE ID = $TorrentID");
 if (!$DB->has_results()) {
-    $Err = Lang::get('reportsv2.a_torrent_with_that_id_does_not_exist');
+    $Err = t('server.reportsv2.a_torrent_with_that_id_does_not_exist');
 }
 list($GroupID) = $DB->next_record();
 
@@ -132,6 +134,10 @@ $DB->query("
 
 $ReportID = $DB->inserted_id();
 
+$trigger = new ActionTrigger;
+$trigger->triggerReport($Type, $TorrentID, $ReportID);
+
+
 if ($Type != "rescore" && $Type != "lossyapproval" && $Type != "upload_contest" && $Type != 'edited') {
     $DB->query("
 	SELECT
@@ -155,16 +161,28 @@ if ($Type != "rescore" && $Type != "lossyapproval" && $Type != "upload_contest" 
 		LEFT JOIN users_info AS ui ON ui.UserID = t.UserID
 	WHERE t.ID = '$TorrentID' and ui.ReportedAlerts = '1'");
     if ($DB->has_results()) {
-        $Data = $DB->next_record(MYSQLI_ASSOC, false);
+        $Data = G::$DB->next_record(MYSQLI_ASSOC);
         list(
-            $UserID, $GroupID, $Size, $InfoHash, $Name, $SubName, $Year, $Time, $Source, $Codec, $Container, $Resolution,
-            $RemasterTitle, $RemasterYear
+            $UserID,
+            $GroupID,
+            $Size,
+            $InfoHash,
+            $Name,
+            $SubName,
+            $Year,
+            $Time,
+            $Source,
+            $Codec,
+            $Container,
+            $Resolution,
+            $RemasterTitle,
+            $RemasterYear
         ) = array_values($Data);
         $Torrent = Torrents::get_torrent($TorrentID);
         $RawName = Torrents::torrent_name($Torrent, false);
 
         $ToUserLang = Lang::getUserLang($UserID);
-        include(Lang::getLangfilePath("report_types", $ToUserLang));
+        include(CONFIG['SERVER_ROOT'] . '/classes/reportsv2_type.php');
         if (array_key_exists($_POST['type'], $Types[$CategoryID])) {
             $ToReportTitle = $Types[$CategoryID][$Type]['title'];
         } elseif (array_key_exists($_POST['type'], $Types['master'])) {

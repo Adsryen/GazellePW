@@ -166,43 +166,47 @@ if ($QuoteNotificationsCount === false || $QuoteNotificationsCount > 0) {
 }
 
 // Start printing
-View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . ' &lt; Forums', 'comments,subscriptions,bbcode,thumb', $IsDonorForum ? 'donor' : '', 'PageForumThread');
+View::show_header($ThreadInfo['Title'], 'comments,subscriptions,bbcode,thumb', $IsDonorForum ? 'donor' : '', 'PageForumThread');
 ?>
 <div class="LayoutBody">
     <div class="BodyHeader">
-        <h2 class="BodyHeader-nav">
-            <a href="forums.php"><?= Lang::get('forums.forums') ?></a> &gt;
+        <div class="BodyHeader-nav">
+            <a href="forums.php"><?= t('server.forums.forums') ?></a> &gt;
             <a href="forums.php?action=viewforum&amp;forumid=<?= $ThreadInfo['ForumID'] ?>"><?= $ForumName ?></a> &gt;
             <?= $ThreadTitle ?>
-        </h2>
+        </div>
         <div class="BodyNavLinksWithExpand">
             <div class="BodyNavLinks">
-                <a href="reports.php?action=report&amp;type=thread&amp;id=<?= $ThreadID ?>" class="brackets"><?= Lang::get('forums.report') ?></a>
-                <a href="#" onclick="Subscribe(<?= $ThreadID ?>);return false;" id="subscribelink<?= $ThreadID ?>" class="brackets"><?= (in_array($ThreadID, $UserSubscriptions) ? Lang::get('global.unsubscribe') :  Lang::get('global.subscribe')) ?></a>
-                <a href="#" onclick="$('#searchthread').gtoggle(); return false;" class="brackets"><?= Lang::get('forums.search') ?></a>
-                <? if (check_perms('site_debug')) { ?> <a href="tools.php?action=service_stats" class="brackets"><?= Lang::get('forums.service_stats') ?></a> <? } ?>
+                <a href="reports.php?action=report&amp;type=thread&amp;id=<?= $ThreadID ?>" class="brackets"><?= t('server.forums.report') ?></a>
+                <a href="#" onclick="Subscribe(<?= $ThreadID ?>, '<?= (in_array($ThreadID, $UserSubscriptions) ? t('server.common.subscribe') :  t('server.common.unsubscribe')) ?>');return false;" id="subscribelink<?= $ThreadID ?>" class="brackets"><?= (in_array($ThreadID, $UserSubscriptions) ? t('server.common.unsubscribe') :  t('server.common.subscribe')) ?></a>
+                <a href="#" onclick="$('#searchthread').gtoggle(); return false;" class="brackets"><?= t('server.forums.search') ?></a>
+
+                <? if (check_perms('site_debug') && $ForumID == CONFIG['NEWS_FORUM_ID']) { ?>
+                    <a href="#" data-tooltip="<?= t('server.tools.publish_a_new_announcement_tooltip') ?>" onclick="Refresh(false)" class="brackets"><?= t('server.tools.publish_a_new_announcement') ?></a>
+                    <a href="#" data-tooltip="<?= t('server.tools.edit_an_announcement_note') ?>" onclick="Refresh(true)" class="brackets"><?= t('server.tools.edit_an_announcement') ?></a>
+                <? } ?>
             </div>
             <form class="Form FormForumThreadSearch" name="forum_thread" action="forums.php" method="get">
-                <div class="Form-rowList hidden" id="searchthread" variant="header">
-                    <div class="Form-rowHeader"><?= Lang::get('forums.search_this_thread') ?></div>
-                    <input type="hidden" name="action" value="search" />
-                    <input type="hidden" name="threadid" value="<?= $ThreadID ?>" />
-                    <table>
-                        <tr class="Form-row">
-                            <td class="Form-label"><?= Lang::get('forums.search_for') ?></td>
-                            <td class="Form-inputs"><input class="Input" type="text" id="searchbox" name="search" size="70" /></td>
-                        </tr>
-                        <tr class="Form-row">
-                            <td class="Form-label"><?= Lang::get('forums.post_by') ?></td>
-                            <td class="Form-inputs"><input class="Input" type="text" id="username" name="user" placeholder="Username" size="70" /></td>
-                        </tr>
-                        <tr class="Form-row">
-                            <td class="Form-submit" colspan="2">
-                                <input class="Button" type="submit" name="submit" value="<?= Lang::get('forums.search') ?>" />
-                            </td>
-                        </tr>
-                    </table>
-                </div>
+                <input type="hidden" name="action" value="search" />
+                <input type="hidden" name="threadid" value="<?= $ThreadID ?>" />
+                <table class="Form-rowList hidden" id="searchthread" variant="header">
+                    <tr class="Form-rowHeader">
+                        <td><?= t('server.forums.search_this_thread') ?></td>
+                    </tr>
+                    <tr class="Form-row">
+                        <td class="Form-label"><?= t('server.forums.search_for') ?></td>
+                        <td class="Form-inputs"><input class="Input" type="text" id="searchbox" name="search" size="70" /></td>
+                    </tr>
+                    <tr class="Form-row">
+                        <td class="Form-label"><?= t('server.forums.post_by') ?></td>
+                        <td class="Form-inputs"><input class="Input" type="text" id="username" name="user" placeholder="Username" size="70" /></td>
+                    </tr>
+                    <tr class="Form-row">
+                        <td class="Form-submit" colspan="2">
+                            <input class="Button" type="submit" name="submit" value="<?= t('server.forums.search') ?>" />
+                        </td>
+                    </tr>
+                </table>
             </form>
             <div class="BodyNavLinks">
                 <?
@@ -253,7 +257,7 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
             $PeopleCount = 0;
         }
 
-        $RevealVoters = in_array($ForumID, $ForumsRevealVoters);
+        $RevealVoters = in_array($ForumID, $CONFIG['ForumsRevealVoters']);
         //Polls lose the you voted arrow thingy
         $DB->query("
 		SELECT Vote
@@ -276,25 +280,28 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
             }
         }
 
-        $PollClass = $ThreadInfo['IsLocked'] ? 'hidden' : '';
+        $PollClass = $ThreadInfo['IsLocked'] ? 'u-hidden' : '';
         $PollStatus = '';
         if ($Closed) {
-            $PollStatus = ' [' . Lang::get('forums.closed') . ']';
+            $PollStatus = ' [' . t('server.forums.closed') . ']';
         }
         if ($Featured && $Featured !== '0000-00-00 00:00:00') {
-            $PollStatus = $PollStatus . ' [' . Lang::get('forums.featured') . ']';
+            $PollStatus = $PollStatus . ' [' . t('server.forums.featured') . ']';
         }
     ?>
         <div class="Box">
             <div class="Box-header">
-                <strong><?= Lang::get('forums.poll') ?> <?= $ForumStatus ?></strong>
-                <a class="brackets" href="#" onclick="$('#PollThread').gtoggle(); return false;">
-                    <?= Lang::get('forums.view', ['Values' => [$ThreadInfo['IsLocked'] ? 'show' : 'hide']]) ?>
-                </a>
+                <div class="Box-headerTitle"><?= t('server.forums.poll') ?> <?= $ForumStatus ?></div>
+                <div class="Box-headerActions">
+                    <a class="brackets" href="#" onclick="globalapp.toggleAny(event, '#PollThread'); return false;">
+                        <span class="u-toggleAny-show <?= $ThreadInfo['IsLocked'] ? '' : 'u-hidden' ?>"><?= t('server.common.show') ?></span>
+                        <span class="u-toggleAny-hide <?= $ThreadInfo['IsLocked'] ? 'u-hidden' : '' ?>"><?= t('server.common.hide') ?></span>
+                    </a>
+                </div>
             </div>
             <div class="Poll Box-body <?= $PollClass ?>" id="PollThread">
                 <div class="Poll-question">
-                    <?= display_str($Question) . " (" . Lang::get('forums.limited', ['Values' => [$MaxCount]]) . ")" ?>
+                    <?= display_str($Question) . " (" . t('server.forums.limited', ['Values' => [$MaxCount]]) . ")" ?>
                 </div>
                 <? if ($UserResponse !== null || $Closed || !Forums::check_forumperm($ForumID)) { ?>
                     <ul class="Poll-answers">
@@ -319,15 +326,15 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                             <? if ($Votes[0] > 0) { ?>
                                 <li class="Poll-answerItem">
                                     <div class="Poll-answerText">
-                                        <?= ($BlankVote ? '&raquo; ' : '') ?>(<?= Lang::get('forums.blank') ?>) (<?= $Votes[0] . ", " . number_format((float) ($Votes[0] / $TotalVotes * 100), 2) ?>%)
+                                        <?= ($BlankVote ? '&raquo; ' : '') ?>(<?= t('server.forums.blank') ?>) (<?= $Votes[0] . ", " . number_format((float) ($Votes[0] / $TotalVotes * 100), 2) ?>%)
                                     </div>
                                     <progress class="Progress" value="<?= ($Votes[0] / $MaxVotes) ?>"></progress>
                                 </li>
                             <? } ?>
                     </ul>
                     <div class="Poll-count">
-                        <?= Lang::get('forums.votes') ?>: <?= number_format($TotalVotes) ?>,
-                        <?= Lang::get('forums.voters') ?>: <?= $PeopleCount ?>
+                        <?= t('server.forums.votes') ?>: <?= number_format($TotalVotes) ?>,
+                        <?= t('server.forums.voters') ?>: <?= $PeopleCount ?>
                     </div>
                 <?
                         } else {
@@ -365,18 +372,18 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                             <li class="Post-answerItem">
                                 <a href="forums.php?action=change_vote&amp;threadid=<?= $ThreadID ?>&amp;auth=<?= $LoggedUser['AuthKey'] ?>&amp;vote=<?= (int) $i ?>"><?= display_str($Answer == '' ? 'Blank' : $Answer) ?></a>
                                 - <?= $StaffVotes[$i] ?>(<?= number_format(((float) $Votes[$i] / $TotalVotes) * 100, 2) ?>%)
-                                <a href="forums.php?action=delete_poll_option&amp;threadid=<?= $ThreadID ?>&amp;auth=<?= $LoggedUser['AuthKey'] ?>&amp;vote=<?= (int) $i ?>" onclick="return confirm('<?= Lang::get('forums.delete_poll_option_title') ?>');" class="brackets" data-tooltip="<?= Lang::get('forums.delete_poll_option') ?>">X</a>
+                                <a href="forums.php?action=delete_poll_option&amp;threadid=<?= $ThreadID ?>&amp;auth=<?= $LoggedUser['AuthKey'] ?>&amp;vote=<?= (int) $i ?>" onclick="return confirm('<?= t('server.forums.delete_poll_option_title') ?>');" class="brackets" data-tooltip="<?= t('server.forums.delete_poll_option') ?>">X</a>
                             </li>
                         <? } ?>
                         <li class="Post-answerItem">
-                            <a href="forums.php?action=change_vote&amp;threadid=<?= $ThreadID ?>&amp;auth=<?= $LoggedUser['AuthKey'] ?>&amp;vote=0"><?= ($UserResponse == '0' ? '&raquo; ' : '') ?><?= Lang::get('forums.blank') ?></a> - <?= $StaffVotes[0] ?>(<?= number_format(((float) $Votes[0] / $TotalVotes) * 100, 2) ?>%)
+                            <a href="forums.php?action=change_vote&amp;threadid=<?= $ThreadID ?>&amp;auth=<?= $LoggedUser['AuthKey'] ?>&amp;vote=0"><?= ($UserResponse == '0' ? '&raquo; ' : '') ?><?= t('server.forums.blank') ?></a> - <?= $StaffVotes[0] ?>(<?= number_format(((float) $Votes[0] / $TotalVotes) * 100, 2) ?>%)
                         </li>
                     </ul>
-                    <? if ($ForumID == STAFF_FORUM) { ?>
+                    <? if ($ForumID == CONFIG['STAFF_FORUM']) { ?>
                         <br />
-                        <strong><?= Lang::get('forums.votes') ?>:</strong> <?= number_format($StaffCount - count($StaffNames)) ?> / <?= $StaffCount ?> current staff, <?= number_format($TotalVotes) ?> <?= Lang::get('forums.missing_votes') ?>
+                        <strong><?= t('server.forums.votes') ?>:</strong> <?= number_format($StaffCount - count($StaffNames)) ?> / <?= $StaffCount ?> current staff, <?= number_format($TotalVotes) ?> <?= t('server.forums.missing_votes') ?>
                         <br />
-                        <strong><?= Lang::get('forums.missing_votes') ?>:</strong> <?= implode(", ", $StaffNames);
+                        <strong><?= t('server.forums.missing_votes') ?>:</strong> <?= implode(", ", $StaffNames);
                                                                                     echo "\n"; ?>
                         <br /><br />
                     <?  } ?>
@@ -401,13 +408,13 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                             <? } ?>
                             <li class="Poll-answerItem Checkbox">
                                 <input class="Input" type="checkbox" name="vote[]" id="answer_0" value="0" onclick="PollCount(0)" />
-                                <label class="Checkbox-label" for="answer_0"><?= Lang::get('forums.blank_show_results') ?></label><br />
+                                <label class="Checkbox-label" for="answer_0"><?= t('server.forums.blank_show_results') ?></label><br />
                             </li>
                         </ul>
-                        <? if ($ForumID == STAFF_FORUM) { ?>
+                        <? if ($ForumID == CONFIG['STAFF_FORUM']) { ?>
                             <a href="#" onclick="AddPollOption(<?= $ThreadID ?>); return false;" class="brackets">+</a>
                         <? } ?>
-                        <input class="Poll-voteFormSubmit Button" type="button" onclick="ajax.post('index.php','poll',function(response) { $('#PollContainer').raw().innerHTML = response});" value="Vote" />
+                        <button class="Poll-voteFormSubmit Button" type="button" onclick="ajax.post('index.php','poll',function(response) { $('#PollContainer').raw().innerHTML = response});" value="Vote"><?= t('server.forums.poll') ?></button>
                     </form>
                 </div>
             <? } ?>
@@ -421,7 +428,7 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                             <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
                             <input type="hidden" name="topicid" value="<?= $ThreadID ?>" />
                             <input type="hidden" name="feature" value="1" />
-                            <input class="Button" type="submit" onclick="return confirm('<?= Lang::get('forums.submit_poll_title') ?>');" value="Feature" />
+                            <button class="Button" type="submit" onclick="return confirm('<?= t('server.forums.submit_poll_title') ?>');" value="Feature"><?= t('server.tools.uploads') ?></button>
                         </form>
                     <? } ?>
                     <form class="manage_form" name="poll" action="forums.php" method="post">
@@ -429,7 +436,7 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                         <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
                         <input type="hidden" name="topicid" value="<?= $ThreadID ?>" />
                         <input type="hidden" name="close" value="1" />
-                        <input class="Button" type="submit" value="<?= (!$Closed ? 'Close' : 'Open') ?>" />
+                        <button class="Button" type="submit" value="<?= (!$Closed ? 'Close' : 'Open') ?>"><?= !$Closed ? t('server.common.close') : t('server.common.open') ?></button>
                     </form>
                 <? } ?>
             </div>
@@ -577,29 +584,28 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                         <div class="TableForumPostHeader">
                             <div class="TableForumPostHeader-info">
                                 <a class="TableForumPost-postId" href="forums.php?action=viewthread&amp;threadid=<?= $ThreadID ?>&amp;postid=<?= $PostID ?>#post<?= $PostID ?>">#<?= $PostID ?></a>
-                                <?= Users::format_username($AuthorID, true, true, true, true, true, $IsDonorForum, false, true);
-                                echo "\n"; ?>
-                                <?= time_diff($AddedTime, 2);
-                                echo "\n"; ?>
+                                <?= Users::format_username($AuthorID, true, true, true, true, true, $IsDonorForum, false, true); ?>
+                                - <?= time_diff($AddedTime, 2); ?>
                             </div>
                             <div class="TableForumPostHeader-actions" id="bar<?= $PostID ?>">
-
-                                <a href="#quickpost" id="quote_<?= $PostID ?>" onclick="Quote('<?= $PostID ?>', '<?= $Username ?>', true);" class="brackets"><?= Lang::get('forums.quote') ?></a>
-
+                                <?
+                                if (!$ThreadInfo['IsLocked']  || check_perms('site_moderate_forums')) {
+                                ?>
+                                    <a href="#quickpost" id="quote_<?= $PostID ?>" onclick="Quote('<?= $PostID ?>', '<?= $Username ?>', true);" class="brackets"><?= t('server.forums.quote') ?></a> -
+                                <?
+                                }
+                                ?>
                                 <? if ((!$ThreadInfo['IsLocked'] && Forums::check_forumperm($ForumID, 'Write') && $AuthorID == $LoggedUser['ID']) || check_perms('site_moderate_forums') || ($AuthorID == $LoggedUser['ID'] && isset($LoggedUser['ExtraClasses']['31']))) { ?>
-                                    - <a href="#post<?= $PostID ?>" onclick="Edit_Form('<?= $PostID ?>', '<?= $Key ?>');" class="brackets"><?= Lang::get('global.edit') ?></a>
+                                    <a href="#post<?= $PostID ?>" onclick="globalapp.editForm('<?= $PostID ?>', '<?= $Key ?>');" class="brackets"><?= t('server.common.edit') ?></a> -
                                 <?
 
                                 }
                                 if (check_perms('site_admin_forums') && $ThreadInfo['Posts'] > 1) { ?>
-                                    - <a href="#post<?= $PostID ?>" onclick="Delete('<?= $PostID ?>');" class="brackets"><?= Lang::get('global.delete') ?></a>
+                                    <a href="#post<?= $PostID ?>" onclick="Delete('<?= $PostID ?>');" class="brackets"><?= t('server.common.delete') ?></a> -
                                 <?
                                 }
-
                                 ?>
-
-
-                                - <a href="reports.php?action=report&amp;type=post&amp;id=<?= $PostID ?>" class="brackets"><?= Lang::get('forums.report') ?></a>
+                                <a href="reports.php?action=report&amp;type=post&amp;id=<?= $PostID ?>" class="brackets"><?= t('server.forums.report') ?></a>
                                 <?
                                 if (check_perms('users_warn') && $AuthorID != $LoggedUser['ID']) {
                                     $AuthorInfo = Users::user_info($AuthorID);
@@ -607,37 +613,38 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                                 ?>
                                         <form class="manage_form hidden" name="user" id="warn<?= $PostID ?>" action="" method="post">
                                             <input type="hidden" name="action" value="warn" />
+                                            <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
                                             <input type="hidden" name="postid" value="<?= $PostID ?>" />
                                             <input type="hidden" name="userid" value="<?= $AuthorID ?>" />
                                             <input type="hidden" name="key" value="<?= $Key ?>" />
                                         </form>
-                                        - <a href="#" onclick="$('#warn<?= $PostID ?>').raw().submit(); return false;" class="brackets"><?= Lang::get('forums.warn') ?></a>
+                                        - <a href="#" onclick="$('#warn<?= $PostID ?>').raw().submit(); return false;" class="brackets"><?= t('server.forums.warn') ?></a>
                                 <?        }
                                 }
                                 ?>
                                 <?
                                 if ($PostID == $ThreadInfo['StickyPostID']) { ?>
-                                    <span class="sticky_post_label"><?= Lang::get('forums.sticky') ?></span>
+                                    - <span class="sticky_post_label"><?= t('server.forums.sticky') ?></span>
                                     <? if (check_perms('site_moderate_forums')) { ?>
-                                        - <a href="forums.php?action=sticky_post&amp;threadid=<?= $ThreadID ?>&amp;postid=<?= $PostID ?>&amp;remove=true&amp;auth=<?= $LoggedUser['AuthKey'] ?>" data-tooltip="<?= Lang::get('forums.unsticky_title') ?>" class="brackets">X</a>
+                                        <a href="forums.php?action=sticky_post&amp;threadid=<?= $ThreadID ?>&amp;postid=<?= $PostID ?>&amp;remove=true&amp;auth=<?= $LoggedUser['AuthKey'] ?>" data-tooltip="<?= t('server.forums.unsticky_title') ?>" class="brackets">X</a>
                                     <?
                                     }
                                 } else {
                                     if (check_perms('site_moderate_forums')) {
                                     ?>
-                                        - <a href="forums.php?action=sticky_post&amp;threadid=<?= $ThreadID ?>&amp;postid=<?= $PostID ?>&amp;auth=<?= $LoggedUser['AuthKey'] ?>" data-tooltip="<?= Lang::get('forums.sticky_title') ?>" class="brackets">&#x21d5;</a>
+                                        - <a href="forums.php?action=sticky_post&amp;threadid=<?= $ThreadID ?>&amp;postid=<?= $PostID ?>&amp;auth=<?= $LoggedUser['AuthKey'] ?>" data-tooltip="<?= t('server.forums.sticky_title') ?>" class="brackets"><?= t('server.forums.sticky') ?></a>
                                 <?
                                     }
                                 }
                                 ?>
                                 - <span class="TableForumPostHeader-like" id="thumb<?= $PostID ?>" <?= $ThumbCounts[$PostID]['on'] ? 'style="display: none;"' : '' ?>>
                                     <?=
-                                    $LoggedUser['ID'] == $AuthorID ? "<div data-tooltip=\"" . Lang::get('forums.cant_like_yourself') . "\">" . icon("Common/like") . "</div>" : "<a href=\"javascript:void(0);\" onclick=\"thumb($PostID, $AuthorID, 'post')\">" . icon("Common/like") . "</a>"
+                                    $LoggedUser['ID'] == $AuthorID ? "<div data-tooltip=\"" . t('server.forums.cant_like_yourself') . "\">" . icon("Common/like") . "</div>" : "<a href=\"javascript:void(0);\" onclick=\"thumb($PostID, $AuthorID, 'post')\">" . icon("Common/like") . "</a>"
                                     ?>
                                 </span>
 
                                 <span class="TableForumPostHeader-like" id="unthumb<?= $PostID ?>" <?= !$ThumbCounts[$PostID]['on'] ? 'style="display: none;"' : '' ?>><a href="javascript:void(0);" onclick="unthumb(<?= $PostID ?>, <?= $AuthorID ?>, 'post')"><?= icon("Common/like") ?></a></span>
-                                <span id="thumbcnt<?= $PostID ?>"><?= $ThumbCounts[$PostID]['count'] ? $ThumbCounts[$PostID]['count'] : Lang::get('forums.like') ?></span>
+                                <span id="thumbcnt<?= $PostID ?>"><?= $ThumbCounts[$PostID]['count'] ? $ThumbCounts[$PostID]['count'] : t('server.forums.like') ?></span>
                             </div>
                     </td>
                 </tr>
@@ -661,25 +668,31 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                         <div class="TableForumPostBody" id="content<?= $PostID ?>">
                             <div class="TableForumPostBody-text HtmlText PostArticle">
                                 <? if ($ThreadInfo['hiddenreplies'] == 1 && $Key != 0) { ?>
-                                    <div class="TableForumPostBody-hiddenReply">(<?= Lang::get('forums.only_starter') ?>)</div>
+                                    <div class="TableForumPostBody-hiddenReply">(<?= t('server.forums.only_starter') ?>)</div>
                                 <? } ?>
                                 <?= Text::full_format($Body) ?>
                             </div>
+                            <form class="TableForumPostBody-edit hidden" id="edit_form_<?= $PostID ?>">
+                                <input type="hidden" name="auth" value="<?= G::$LoggedUser['AuthKey'] ?>" />
+                                <input type="hidden" name="key" value="<?= $Key ?>" />
+                                <input type="hidden" name="post" value="<?= $PostID ?>" />
+                                <? new TEXTAREA_PREVIEW('body', "edit_content_$PostID", '', 60, 8, true, true, false); ?>
+                            </form>
                             <? if (($ThreadInfo['hiddenreplies'] != 1 || check_perms('forums_see_hidden') || $ThreadInfo['OP'] == $LoggedUser['ID'] && $AuthorID != $LoggedUser['ID']) && $JF_log) { ?>
                                 <div class="ForumPostReward is-<?= $PostID ?>">
                                     <div class="ForumPostReward-header">
-                                        <?= Lang::get('forums.bonus_giving') ?>
+                                        <?= t('server.forums.bonus_giving') ?>
                                     </div>
                                     <table class="ForumPostReward-body">
                                         <tr class="ForumPostReward-row is-header">
                                             <td class="ForumPostReward-cell is-giver">
-                                                <?= Lang::get('forums.bonus_giver') ?>
+                                                <?= t('server.forums.bonus_giver') ?>
                                             </td>
                                             <td class="ForumPostReward-cell is-bonus">
-                                                <?= Lang::get('forums.bonus') ?>
+                                                <?= t('server.forums.bonus') ?>
                                             </td>
                                             <td class="ForumPostReward-cell is-comment">
-                                                <?= Lang::get('forums.comments') ?>
+                                                <?= t('server.forums.comments') ?>
                                             </td>
                                         </tr>
                                         <?
@@ -739,8 +752,11 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                                     <div class="last_edited">
                                         <? if (check_perms('site_admin_forums')) { ?>
                                             <a href="#content<?= $PostID ?>" onclick="LoadEdit('forums', <?= $PostID ?>, 1); return false;">&laquo;</a>
-                                        <?        } ?>
-                                        <?= Lang::get('forums.last_edit_by_before') ?><?= Users::format_username($EditedUserID, false, false, false, false, false, $IsDonorForum) ?><?= Lang::get('forums.last_edit_by_after') ?> <?= time_diff($EditedTime, 2, true, true) ?>
+                                        <? } ?>
+                                        <?= t('server.forums.last_edit_by', ['Values' => [
+                                            Users::format_username($EditedUserID, false, false, false, false, false, $IsDonorForum)
+                                        ]]) ?>
+                                        <?= time_diff($EditedTime, 2, true, true) ?>
                                     </div>
                                 <?    }
                                 if ($ThreadInfo['hiddenreplies'] != 1 || check_perms('forums_see_hidden') || $ThreadInfo['OP'] == $LoggedUser['ID']) {
@@ -765,61 +781,56 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                                         })
                                     </script>
                                     <div class="TableForumPostBody-actionReward">
-                                        <span><?= Lang::get('forums.bonus_reward') ?></span>
-                                        <select class="Input" id="select_<?= $PostID ?>">
-                                            <?
-                                            if (check_perms('admin_send_bonus')) {
-                                            ?>
-                                                <option class="Select-option" value="10" id="psn_<?= $PostID ?>">10</option>
-                                                <option class="Select-option" value="50" id="psn_<?= $PostID ?>">50</option>
-                                                <option class="Select-option" value="200" id="psn_<?= $PostID ?>">200</option>
-                                                <option class="Select-option" value="500" id="psn_<?= $PostID ?>">500</option>
-                                                <option class="Select-option" value="100" id="sysn_<?= $PostID ?>" style="display:none;">100</option>
-                                                <option class="Select-option" value="500" id="sysn_<?= $PostID ?>" style="display:none;">500</option>
-                                                <option class="Select-option" value="1000" id="sysn_<?= $PostID ?>" style="display:none;">1000</option>
-                                                <option class="Select-option" value="3000" id="sysn_<?= $PostID ?>" style="display:none;">3000</option>
-                                                <option class="Select-option" value="0" id="sysn_<?= $PostID ?>" style="display:none;"><?= Lang::get('forums.customize') ?></option>
-                                            <?
-                                            } else if (isset($LoggedUser['ExtraClasses']['31'])) {
-                                            ?>
-                                                <option class="Select-option" value="0" id="sysn_<?= $PostID ?>">TC</option>
-                                                <option class="Select-option" value="10" id="psn_<?= $PostID ?>" style="display:none;">10</option>
-                                                <option class="Select-option" value="50" id="psn_<?= $PostID ?>" style="display:none;">50</option>
-                                                <option class="Select-option" value="200" id="psn_<?= $PostID ?>" style="display:none;">200</option>
-                                                <option class="Select-option" value="500" id="psn_<?= $PostID ?>" style="display:none;">500</option>
-                                            <?
-                                            } else {
-                                            ?>
-                                                <option class="Select-option" value="10">10</option>
-                                                <option class="Select-option" value="50">50</option>
-                                                <option class="Select-option" value="200">200</option>
-                                                <option class="Select-option" value="500">500</option>
-                                            <?
-                                            }
-                                            ?>
-                                        </select>
-                                        <input class="Input" type="number" id="input_<?= $PostID ?>" max="5000" min="1" style="display: none;">
+                                        <span><?= t('server.forums.bonus_reward') ?></span>
+                                        <div>
+                                            <select class="Input" id="select_<?= $PostID ?>">
+                                                <?
+                                                if (check_perms('admin_send_bonus')) {
+                                                ?>
+                                                    <? foreach ($ForumBonus as $Bonus) { ?>
+                                                        <option class="Select-option" value="<?= $Bonus ?>" id="psn_<?= $PostID ?>"><?= $Bonus ?></option>
+                                                    <? } ?>
+                                                    <? foreach ($ForumAdminBonus as $Bonus) { ?>
+                                                        <option class="Select-option" value="<?= $Bonus ?>" id="sysn_<?= $PostID ?>" style="display:none;"><?= $Bonus ?></option>
+                                                    <? } ?>
+                                                    <option class="Select-option" value="0" id="sysn_<?= $PostID ?>" style="display:none;"><?= t('server.forums.customize') ?></option>
+                                                <?
+                                                } else if (isset($LoggedUser['ExtraClasses']['31'])) {
+                                                ?>
+                                                    <option class="Select-option" value="0" id="sysn_<?= $PostID ?>">TC</option>
+                                                    <? foreach ($ForumBonus as $Bonus) { ?>
+                                                        <option class="Select-option" value="<?= $Bonus ?>" id="psn_<?= $PostID ?>" style="display:none;"><?= $Bonus ?></option>
+                                                    <? } ?>
+                                                <?
+                                                } else {
+                                                ?>
+                                                    <? foreach ($ForumBonus as $Bonus) { ?>
+                                                        <option class="Select-option" value="<?= $Bonus ?>"><?= $Bonus ?></option>
+                                                    <? } ?>
+
+                                                <?
+                                                }
+                                                ?>
+                                            </select>
+                                            <input class="Input is-small" type="number" id="input_<?= $PostID ?>" style="display: none;">
+                                        </div>
                                         <?
                                         if (check_perms('admin_send_bonus')) {
                                         ?>
-                                            <span>
-                                                <input id="sys_<?= $PostID ?>" type="checkbox" name="system">
-                                                <label for="sys_<?= $PostID ?>"><?= Lang::get('forums.as_system') ?></label>
-                                            </span>
+                                            <input class="Checkbox" id="sys_<?= $PostID ?>" type="checkbox" name="system">
+                                            <label for="sys_<?= $PostID ?>"><?= t('server.forums.as_system') ?></label>
                                         <?
                                         } else if (isset($LoggedUser['ExtraClasses']['31'])) {
                                         ?>
-                                            <span>
-                                                <input id="sys_<?= $PostID ?>" type="checkbox" name="system" checked="checked">
-                                                <label for="sys_<?= $PostID ?>"><?= Lang::get('forums.only_tc') ?></label>
-                                            </span>
+                                            <input class="Checkbox" id="sys_<?= $PostID ?>" type="checkbox" name="system" checked="checked">
+                                            <label for="sys_<?= $PostID ?>"><?= t('server.forums.only_tc') ?></label>
                                         <?
                                         }
                                         ?>
-                                        <input class="Input" type="text" id="input_comment_<?= $PostID ?>" maxlength=20 placeholder="<?= Lang::get('forums.comment_optional') ?>">
-                                        <button class="Button" id="button_<?= $PostID ?>"><?= check_perms('admin_send_bonus') ? Lang::get('forums.personal_reward') : Lang::get('forums.confirm') ?></button>
+                                        <input class="Input" type="text" id="input_comment_<?= $PostID ?>" maxlength=20 placeholder="<?= t('server.forums.comment_optional') ?>">
+                                        <button class="Button" id="button_<?= $PostID ?>"><?= check_perms('admin_send_bonus') ? t('server.forums.personal_reward') : t('server.forums.confirm') ?></button>
                                     </div>
-                                    <? //} 
+                                    <? //}
                                     ?>
 
                             </div> <? } ?>
@@ -831,7 +842,7 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
     <? } ?>
 
     <div class="breadcrumbs">
-        <a href="forums.php"><?= Lang::get('forums.forums') ?></a> &gt;
+        <a href="forums.php"><?= t('server.forums.forums') ?></a> &gt;
         <a href="forums.php?action=viewforum&amp;forumid=<?= $ThreadInfo['ForumID'] ?>"><?= $ForumName ?></a> &gt;
         <?= $ThreadTitle ?>
     </div>
@@ -842,7 +853,7 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
     if (!$ThreadInfo['IsLocked'] || check_perms('site_moderate_forums')) {
         if (Forums::check_forumperm($ForumID, 'Write') && !$LoggedUser['DisablePosting']) {
             View::parse('generic/reply/quickreply.php', array(
-                'InputTitle' => Lang::get('forums.post_reply'),
+                'InputTitle' => t('server.forums.post_reply'),
                 'InputName' => 'thread',
                 'InputID' => $ThreadID,
                 'ForumID' => $ForumID,
@@ -857,36 +868,43 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
 			WHERE TopicID = $ThreadID
 			ORDER BY ID ASC");
         $Notes = G::$DB->to_array();
+
     ?>
-        <div class="Form-rowList" variant="header">
-            <div class="Form-rowHeader"><?= Lang::get('forums.thread_notes') ?><a href="#" onclick="$('#thread_notes_table').gtoggle(); return false;" class="Form-actions"><?= Lang::get('global.toggle') ?></a></div>
-            <form action="forums.php" method="post">
-                <input type="hidden" name="action" value="take_topic_notes" />
-                <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
-                <input type="hidden" name="topicid" value="<?= $ThreadID ?>" />
-                <div class="hidden Post-body Box-body HtmlText LayoutBody" id="thread_notes_table">
-                    <?
-                    foreach ($Notes as $Note) {
-                    ?>
-                        <div class="Post Box">
-                            <div class="Post-header Box-header">
-                                <?= Users::format_username($Note['AuthorID']) ?> (<?= time_diff($Note['AddedTime'], 2, true, true) ?>)
-                            </div>
-                            <div class="Post-body Box-body HtmlText">
-                                <?= Text::full_format($Note['Body']) ?>
-                            </div>
-                        </div>
-                    <?
-                    }
-                    ?>
-                    <div>
-                        <div class="textarea_wrap">
-                            <textarea class="Input" id="topic_notes" name="body" cols="90" rows="3" onkeyup="resize('threadnotes');"></textarea>
-                        </div>
-                        <div class="Form-row"><input class="Button" type="submit" value="Save" /></div>
-                    </div>
+        <div class="Group">
+            <div class="Group-header">
+                <div class="Group-headerTitle"><?= t('server.forums.thread_notes') ?></div>
+                <div class="Group-headerActions">
+                    <a href="#" onclick="globalapp.toggleAny(event,'#thread_notes_table'); return false;">
+                        <span class="u-toggleAny-show"><?= t('server.common.show') ?></span>
+                        <span class="u-toggleAny-hide u-hidden"><?= t('server.common.hide') ?></span>
+                    </a>
                 </div>
-            </form>
+            </div>
+            <div class="Group-body u-hidden" id="thread_notes_table">
+
+                <?
+                foreach ($Notes as $Note) {
+                ?>
+
+                    <div class="Box">
+                        <div class="Box-header">
+                            <?= Users::format_username($Note['AuthorID']) ?> (<?= time_diff($Note['AddedTime'], 2, true, true) ?>)
+                        </div>
+                        <div class="Box-body">
+                            <?= Text::full_format($Note['Body']) ?>
+                        </div>
+                    </div>
+                <?
+                }
+                ?>
+                <form action="forums.php" method="post">
+                    <input type="hidden" name="action" value="take_topic_notes" />
+                    <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
+                    <input type="hidden" name="topicid" value="<?= $ThreadID ?>" />
+                    <? new TEXTAREA_PREVIEW('body', 'topic_notes', '', 60, 8, true, true, false); ?>
+                    <div class="Form-row"><button class="Button" type="submit" value="Save"><?= t('client.common.save') ?></button></div>
+                </form>
+            </div>
         </div>
         <form class="edit_form" name="forum_thread" action="forums.php" method="post">
             <div>
@@ -897,10 +915,10 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
             </div>
             <table cellpadding="6" cellspacing="1" border="0" width="100%" class="Form-rowList" variant="header">
                 <tr class="Form-rowHeader">
-                    <td><?= Lang::get('forums.edit_thread') ?></td>
+                    <td><?= t('server.forums.edit_thread') ?></td>
                 </tr>
                 <tr class="Form-row">
-                    <td class="Form-label"><label for="sticky_thread_checkbox"><?= Lang::get('forums.sticky') ?></label></td>
+                    <td class="Form-label"><label for="sticky_thread_checkbox"><?= t('server.forums.sticky') ?></label></td>
                     <td class="Form-inputs">
                         <input type="checkbox" id="sticky_thread_checkbox" name="sticky" <? if ($ThreadInfo['IsSticky']) {
                                                                                                 echo ' checked="checked"';
@@ -908,7 +926,7 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                     </td>
                 </tr>
                 <tr class="Form-row">
-                    <td class="Form-label"><label for="hiddenreplies_thread_checkbox"><?= Lang::get('forums.only_starter') ?></label></td>
+                    <td class="Form-label"><label for="hiddenreplies_thread_checkbox"><?= t('server.forums.only_starter') ?></label></td>
                     <td class="Form-inputs">
                         <input type="checkbox" id="hiddenreplies_thread_checkbox" name="hiddenreplies" <? if ($ThreadInfo['hiddenreplies']) {
                                                                                                             echo ' checked="checked"';
@@ -916,13 +934,13 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                     </td>
                 </tr>
                 <tr class="Form-row" id="ranking_row">
-                    <td class="Form-label"><label for="thread_ranking_textbox"><?= Lang::get('forums.ranking') ?></label></td>
+                    <td class="Form-label"><label for="thread_ranking_textbox"><?= t('server.forums.ranking') ?></label></td>
                     <td class="Form-inputs">
                         <input class="Input" type="text" id="thread_ranking_textbox" name="ranking" value="<?= $ThreadInfo['Ranking'] ?>" tabindex="2" />
                     </td>
                 </tr>
                 <tr class="Form-row">
-                    <td class="Form-label"><label for="locked_thread_checkbox"><?= Lang::get('forums.locked') ?></label></td>
+                    <td class="Form-label"><label for="locked_thread_checkbox"><?= t('server.forums.locked') ?></label></td>
                     <td class="Form-inputs">
                         <input type="checkbox" id="locked_thread_checkbox" name="locked" <? if ($ThreadInfo['IsLocked']) {
                                                                                                 echo ' checked="checked"';
@@ -930,24 +948,24 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                     </td>
                 </tr>
                 <tr class="Form-row">
-                    <td class="Form-label"><label for="auto_locked_thread_checkbox"><?= Lang::get('forums.auto_locked') ?></label></td>
+                    <td class="Form-label"><label for="auto_locked_thread_checkbox"><?= t('server.forums.auto_locked') ?></label></td>
                     <td class="Form-inputs">
                         <select class="Input" name="autolocked" id="auto_locked_thread_checkbox" tabindex="2">
                             <option class="Select-option" value="0" <? if ($ThreadInfo['AutoLocked'] == '0') {
                                                                         echo ' selected="selected"';
-                                                                    } ?>><?= Lang::get('forums.the_same_as_thread') ?></option>
+                                                                    } ?>><?= t('server.forums.the_same_as_thread') ?></option>
                             <option class="Select-option" value="1" <? if ($ThreadInfo['AutoLocked'] == '1') {
                                                                         echo ' selected="selected"';
-                                                                    } ?>><?= Lang::get('forums.auto_locked') ?></option>
+                                                                    } ?>><?= t('server.forums.auto_locked') ?></option>
                             <option class="Select-option" value="2" <? if ($ThreadInfo['AutoLocked'] == '2') {
                                                                         echo ' selected="selected"';
-                                                                    } ?>><?= Lang::get('forums.dont_auto_locked') ?></option>
+                                                                    } ?>><?= t('server.forums.dont_auto_locked') ?></option>
                         </select>
                     </td>
                 </tr>
                 <? if (check_perms('site_debug')) { ?>
                     <tr class="Form-row">
-                        <td class="Form-label"><label for="locked_thread_checkbox"><?= Lang::get('forums.index_refresh') ?></label></td>
+                        <td class="Form-label"><label for="locked_thread_checkbox"><?= t('server.forums.index_refresh') ?></label></td>
                         <td class="Form-inputs">
                             <input type="checkbox" id="locked_thread_checkbox" name="notice" <? if ($ThreadInfo['IsNotice']) {
                                                                                                     echo ' checked="checked"';
@@ -956,13 +974,13 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                     </tr>
                 <? } ?>
                 <tr class="Form-row">
-                    <td class="Form-label"><label for="thread_title_textbox"><?= Lang::get('forums.title') ?></label></td>
+                    <td class="Form-label"><label for="thread_title_textbox"><?= t('server.forums.title') ?></label></td>
                     <td class="Form-inputs">
                         <input class="Input" type="text" id="thread_title_textbox" name="title" style="width: 75%;" value="<?= display_str($ThreadInfo['Title']) ?>" tabindex="2" />
                     </td>
                 </tr>
                 <tr class="Form-row">
-                    <td class="Form-label"><label for="move_thread_selector"><?= Lang::get('forums.move_thread') ?></label></td>
+                    <td class="Form-label"><label for="move_thread_selector"><?= t('server.forums.move_thread') ?></label></td>
                     <td class="Form-inputs">
                         <select class="Input" name="forumid" id="move_thread_selector" tabindex="2">
                             <?
@@ -993,7 +1011,7 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                 </tr>
                 <? if (check_perms('site_admin_forums')) { ?>
                     <tr class="Form-row">
-                        <td class="Form-label"><label for="delete_thread_checkbox"><?= Lang::get('forums.delete_thread') ?></label></td>
+                        <td class="Form-label"><label for="delete_thread_checkbox"><?= t('server.forums.delete_thread') ?></label></td>
                         <td class="Form-inputs">
                             <input type="checkbox" id="delete_thread_checkbox" name="delete" tabindex="2" />
                         </td>
@@ -1001,10 +1019,8 @@ View::show_header($ThreadInfo['Title'] . ' &lt; ' . $Forums[$ForumID]['Name'] . 
                 <?    } ?>
                 <tr class="Form-row">
                     <td colspan="2" class="center">
-                        <input class="Button" type="submit" value="<?= Lang::get('forums.edit_thread') ?>" tabindex="2" />
-                        <span style="float: right;">
-                            <input class="Button" type="submit" name="trash" value="Trash" tabindex="2" />
-                        </span>
+                        <input class="Button" type="submit" value="<?= t('server.forums.edit_thread') ?>" tabindex="2" />
+                        <button class="Button" type="submit" name="trash" value="Trash" tabindex="2"><?= t('server.forums.trash') ?></button>
                     </td>
                 </tr>
 

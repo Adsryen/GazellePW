@@ -1,4 +1,7 @@
 <?php
+
+use Gazelle\Manager\ActionTrigger;
+
 authorize();
 
 /*
@@ -88,6 +91,9 @@ $DB->query("
 		('" . db_string($Title) . "', '" . $LoggedUser['ID'] . "', '$ForumID', '" . $sqltime . "', '" . $LoggedUser['ID'] . "', '" . $sqltime . "')");
 $TopicID = $DB->inserted_id();
 
+$trigger = new ActionTrigger;
+$trigger->triggerCreateTopic($TopicID);
+
 $DB->query("
 	INSERT INTO forums_posts
 		(TopicID, AuthorID, AddedTime, Body)
@@ -128,7 +134,7 @@ if (!$NoPoll) { // god, I hate double negatives...
 			('$TopicID', '" . db_string($Question) . "', '" . db_string(serialize($Answers)) . "', $MaxCount)");
     $Cache->cache_value("polls_$TopicID", array($Question, $Answers, $Votes, '0000-00-00 00:00:00', '0', $MaxCount), 0);
 
-    if ($ForumID == STAFF_FORUM) {
+    if ($ForumID == CONFIG['STAFF_FORUM']) {
         send_irc('PRIVMSG ' . CONFIG['ADMIN_CHAN'] . ' :!mod Poll created by ' . $LoggedUser['Username'] . ": \"$Question\" " . site_url() . "forums.php?action=viewthread&threadid=$TopicID");
     }
 }
@@ -186,6 +192,7 @@ if ($Forum = $Cache->get_value("forums_$ForumID")) {
     $Cache->delete_value('forums_list');
 }
 
+$Cache->delete_value("forums_index_$ForumID");
 $Cache->begin_transaction("thread_$TopicID" . '_catalogue_0');
 $Post = array(
     'ID' => $PostID,

@@ -132,12 +132,21 @@ function show_files(TorrentID, View) {
 }
 
 function show_reported(TorrentID, View) {
+  if ($('#' + View + '_reported_' + TorrentID).raw().innerHTML === '') {
+    $('#' + View + '_reported_' + TorrentID)
+      .gshow()
+      .raw().innerHTML = '<h4>Loading...</h4>'
+    ajax.get('torrents.php?action=reportlist&torrentid=' + TorrentID, function (response) {
+      $('#' + View + '_reported_' + TorrentID).raw().innerHTML = response
+    })
+  } else {
+    $('#' + View + '_reported_' + TorrentID).gtoggle()
+  }
   $('#' + View + '_files_' + TorrentID).ghide()
   $('#' + View + '_viewlog_' + TorrentID).ghide()
   $('#' + View + '_peers_' + TorrentID).ghide()
   $('#' + View + '_snatches_' + TorrentID).ghide()
   $('#' + View + '_downloads_' + TorrentID).ghide()
-  $('#' + View + '_reported_' + TorrentID).gtoggle()
   $('#' + View + '_giver_' + TorrentID).ghide()
 }
 
@@ -164,17 +173,17 @@ globalapp.browseAddArtistField = function browseAddArtistField() {
   Importance.name = 'importance[]'
   Importance.innerHTML =
     '<option class="Select-option" value="1">' +
-    lang.get('common.director') +
+    t('client.common.director') +
     '</option><option class="Select-option" value="2">' +
-    lang.get('common.writer') +
+    t('client.common.writer') +
     '</option><option class="Select-option" value="3">' +
-    lang.get('common.producer') +
+    t('client.common.producer') +
     '</option><option class="Select-option" value="4">' +
-    lang.get('common.composer') +
+    t('client.common.composer') +
     '</option><option class="Select-option" value="5">' +
-    lang.get('common.cinematographer') +
+    t('client.common.cinematographer') +
     '</option><option class="Select-option" value="6">' +
-    lang.get('common.actor') +
+    t('client.common.actor') +
     '</option>'
   x.appendChild(Importance)
   if ($('#artist').data('gazelle-autocomplete')) {

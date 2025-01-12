@@ -2,7 +2,7 @@
 
 require(CONFIG['SERVER_ROOT'] . '/sections/torrents/functions.php');
 
-$GroupAllowed = array('WikiBody', 'WikiImage', 'ID', 'Name', 'Year',  'ReleaseType', 'CategoryID', 'Time');
+$GroupAllowed = array('WikiBody', 'MainWikiBody', 'WikiImage', 'ID', 'Name', 'Year',  'ReleaseType', 'CategoryID', 'Time');
 $TorrentAllowed = array('ID', 'RemasterYear', 'RemasterTitle',  'Scene', 'FileCount', 'Size', 'Seeders', 'Leechers', 'Snatched', 'FreeTorrent', 'Time', 'Description', 'FileList', 'FilePath', 'UserID', 'Username');
 
 $GroupID = (int)$_GET['id'];
@@ -42,12 +42,13 @@ $TagList = explode('|', $TorrentDetails['GROUP_CONCAT(DISTINCT tags.Name SEPARAT
 
 $JsonTorrentDetails = array(
     'wikiBody'        => html_entity_decode(Text::full_format($TorrentDetails['WikiBody'])),
+    'MainwikiBody'        => html_entity_decode(Text::full_format($TorrentDetails['MainWikiBody'])),
     'wikiImage'       => $TorrentDetails['WikiImage'],
     'id'              => (int)$TorrentDetails['ID'],
     'name'            => $TorrentDetails['Name'],
     'subName' => html_entity_decode($TorrentDetails['SubName']),
     'year'            => (int)$TorrentDetails['Year'],
-    'releaseType' => Lang::get('torrents.release_types')[$TorrentDetails['ReleaseType']],
+    'releaseType' => t('server.torrents.release_types')[$TorrentDetails['ReleaseType']],
     'categoryId'      => (int)$TorrentDetails['CategoryID'],
     'categoryName'    => $CategoryName,
     'time'            => $TorrentDetails['Time'],
@@ -65,7 +66,7 @@ foreach ($TorrentList as $Torrent) {
     unset($File);
     $FileList = implode('|||', $FileList);
     $Userinfo = Users::user_info($Torrent['UserID']);
-    $Reports = Torrents::get_reports($Torrent['ID']);
+    $Reports = Reports::get_reports($Torrent['ID']);
     $Torrent['Reported'] = count($Reports) > 0;
     $JsonTorrentList[] = array(
         'id'                      => (int)$Torrent['ID'],

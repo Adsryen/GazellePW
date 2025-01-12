@@ -14,7 +14,7 @@ user.
 
 $UserID = $_GET['userid'];
 if (!is_number($UserID)) {
-	error(404);
+    error(404);
 }
 
 $DB->query("
@@ -26,7 +26,7 @@ $DB->query("
 list($Joined, $Class) = $DB->next_record();
 
 if (!check_perms('users_view_email', $Class)) {
-	error(403);
+    error(403);
 }
 
 $UsersOnly = $_GET['usersonly'];
@@ -36,10 +36,10 @@ $DB->query("
 	FROM users_main
 	WHERE ID = $UserID");
 list($Username) = $DB->next_record();
-View::show_header(Lang::get('userhistory.email_history_for_before') . "$Username" . Lang::get('userhistory.email_history_for_after'), '', 'PageUserHistoryEmail');
+View::show_header(t('server.userhistory.email_history_for', ['Values' => [$Username]]), '', 'PageUserHistoryEmail');
 
 if ($UsersOnly == 1) {
-	$DB->query("
+    $DB->query("
 		SELECT
 			u.Email,
 			'" . sqltime() . "' AS Time,
@@ -47,7 +47,7 @@ if ($UsersOnly == 1) {
 			c.Code
 		FROM users_main AS u
 			LEFT JOIN users_main AS u2 ON u2.Email = u.Email AND u2.ID != '$UserID'
-			LEFT JOIN geoip_country AS c ON INET_ATON(u.IP) BETWEEN c.StartIP AND c.EndIP
+			LEFT JOIN geoip_country AS c ON INET6_ATON(u.IP) BETWEEN c.StartIP AND c.EndIP
 		WHERE u.ID = '$UserID'
 			AND u2.ID > 0
 		UNION
@@ -58,20 +58,20 @@ if ($UsersOnly == 1) {
 			c.Code
 		FROM users_history_emails AS h
 			LEFT JOIN users_history_emails AS h2 ON h2.email = h.email and h2.UserID != '$UserID'
-			LEFT JOIN geoip_country AS c ON INET_ATON(h.IP) BETWEEN c.StartIP AND c.EndIP
+			LEFT JOIN geoip_country AS c ON INET6_ATON(h.IP) BETWEEN c.StartIP AND c.EndIP
 		WHERE h.UserID = '$UserID'
 			AND h2.UserID > 0"
-		/*AND Time != '0000-00-00 00:00:00'*/ . "
+        /*AND Time != '0000-00-00 00:00:00'*/ . "
 		ORDER BY Time DESC");
 } else {
-	$DB->query("
+    $DB->query("
 		SELECT
 			u.Email,
 			'" . sqltime() . "' AS Time,
 			u.IP,
 			c.Code
 		FROM users_main AS u
-			LEFT JOIN geoip_country AS c ON INET_ATON(u.IP) BETWEEN c.StartIP AND c.EndIP
+			LEFT JOIN geoip_country AS c ON INET6_ATON(u.IP) BETWEEN c.StartIP AND c.EndIP
 		WHERE u.ID = '$UserID'
 		UNION
 		SELECT
@@ -80,44 +80,48 @@ if ($UsersOnly == 1) {
 			h.IP,
 			c.Code
 		FROM users_history_emails AS h
-			LEFT JOIN geoip_country AS c ON INET_ATON(h.IP) BETWEEN c.StartIP AND c.EndIP
+			LEFT JOIN geoip_country AS c ON INET6_ATON(h.IP) BETWEEN c.StartIP AND c.EndIP
 		WHERE UserID = '$UserID' "
-		/*AND Time != '0000-00-00 00:00:00'*/ . "
+        /*AND Time != '0000-00-00 00:00:00'*/ . "
 		ORDER BY Time DESC");
 }
 $History = $DB->to_array();
 ?>
 <div class="BodyHeader">
-	<h2 class="BodyHeader-nav"><?= Lang::get('userhistory.email_history_for_before') ?><a href="user.php?id=<?= $UserID ?>"><?= $Username ?></a><?= Lang::get('userhistory.email_history_for_after') ?></h2>
+    <h2 class="BodyHeader-nav">
+        <?= t('server.userhistory.email_history_for', ['Values' => [
+            "<a href='user.php?id=${UserID}'>${Username}</a>"
+        ]]) ?>
+    </h2>
 </div>
 <div class="TableContainer">
-	<table class="TableUserEmailHistory Table">
-		<tr class="Table-rowHeader">
-			<td class="Table-cell"><?= Lang::get('userhistory.email') ?></td>
-			<td class="Table-cell"><?= Lang::get('userhistory.set') ?></td>
-			<td class="Table-cell">IP <a href="userhistory.php?action=ips&amp;userid=<?= $UserID ?>" class="brackets">H</a></td>
-			<? if ($UsersOnly == 1) {
-			?>
-				<td class="Table-cell"><?= Lang::get('userhistory.user') ?></td>
-			<?
-			}
-			?>
-		</tr>
-		<?
-		foreach ($History as $Key => $Values) {
-			if (isset($History[$Key + 1])) {
-				$Values['Time'] = $History[$Key + 1]['Time'];
-			} else {
-				$Values['Time'] = $Joined;
-			}
-		?>
-			<tr class="Table-row">
-				<td class="Table-cell"><?= display_str($Values['Email']) ?></td>
-				<td class="Table-cell"><?= time_diff($Values['Time']) ?></td>
-				<td class="Table-cell"><?= display_str($Values['IP']) ?> (<?= display_str($Values['Code']) ?>) <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($Values['IP']) ?>" class="brackets" data-tooltip="<?= Lang::get('userhistory.search') ?>">S</a></td>
-				<?
-				if ($UsersOnly == 1) {
-					$ueQuery = $DB->query("
+    <table class="TableUserEmailHistory Table">
+        <tr class="Table-rowHeader">
+            <td class="Table-cell"><?= t('server.userhistory.email') ?></td>
+            <td class="Table-cell"><?= t('server.userhistory.set') ?></td>
+            <td class="Table-cell">IP <a href="userhistory.php?action=ips&amp;userid=<?= $UserID ?>" class="brackets">H</a></td>
+            <? if ($UsersOnly == 1) {
+            ?>
+                <td class="Table-cell"><?= t('server.userhistory.user') ?></td>
+            <?
+            }
+            ?>
+        </tr>
+        <?
+        foreach ($History as $Key => $Values) {
+            if (isset($History[$Key + 1])) {
+                $Values['Time'] = $History[$Key + 1]['Time'];
+            } else {
+                $Values['Time'] = $Joined;
+            }
+        ?>
+            <tr class="Table-row">
+                <td class="Table-cell"><?= display_str($Values['Email']) ?></td>
+                <td class="Table-cell"><?= time_diff($Values['Time']) ?></td>
+                <td class="Table-cell"><?= display_str($Values['IP']) ?> (<?= display_str($Values['Code']) ?>) <a href="user.php?action=search&amp;ip_history=on&amp;ip=<?= display_str($Values['IP']) ?>" class="brackets" data-tooltip="<?= t('server.userhistory.search') ?>">S</a></td>
+                <?
+                if ($UsersOnly == 1) {
+                    $ueQuery = $DB->query("
 					SELECT
 						ue.UserID,
 						um.Username,
@@ -127,27 +131,27 @@ $History = $DB->to_array();
 					WHERE ue.Email = '" . db_string($Values['Email']) . "'
 						AND ue.UserID != $UserID
 						AND um.ID = ue.UserID");
-					while (list($UserID2, $Time, $IP) = $DB->next_record()) { ?>
-			</tr>
-			<tr class="Table-row">
-				<td class="Table-cell"></td>
-				<td class="Table-cell"><?= time_diff($Time) ?></td>
-				<td class="Table-cell"><?= display_str($IP) ?></td>
-				<?
-						$UserURL = site_url() . "user.php?id=$UserID2";
-						$DB->query("
+                    while (list($UserID2, $Time, $IP) = $DB->next_record()) { ?>
+            </tr>
+            <tr class="Table-row">
+                <td class="Table-cell"></td>
+                <td class="Table-cell"><?= time_diff($Time) ?></td>
+                <td class="Table-cell"><?= display_str($IP) ?></td>
+                <?
+                        $UserURL = site_url() . "user.php?id=$UserID2";
+                        $DB->query("
 				SELECT Enabled
 				FROM users_main
 				WHERE ID = $UserID2");
-						list($Enabled) = $DB->next_record();
-						$DB->set_query_id($ueQuery);
-				?>
-				<td class="Table-cell"><a href="<?= display_str($UserURL) ?>"><?= Users::format_username($UserID2, false, false, true) ?></a></td>
-			</tr>
+                        list($Enabled) = $DB->next_record();
+                        $DB->set_query_id($ueQuery);
+                ?>
+                <td class="Table-cell"><a href="<?= display_str($UserURL) ?>"><?= Users::format_username($UserID2, false, false, true) ?></a></td>
+            </tr>
 <?
-					}
-				}
-			} ?>
-	</table>
+                    }
+                }
+            } ?>
+    </table>
 </div>
 <? View::show_footer(); ?>

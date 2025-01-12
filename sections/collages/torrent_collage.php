@@ -43,23 +43,28 @@ foreach ($GroupIDs as $Idx => $GroupID) {
         continue;
     }
     $Group = $TorrentList[$GroupID];
-    extract(Torrents::array_group($Group));
+    $Artists = $Group['Artists'];
     $UserID = $Contributors[$GroupID];
-    new Tags($TagList);
+    new Tags(Torrents::tags($Group));
 
     // Handle stats and stuff
     $Number++;
-    if ($UserID == $LoggedUser['ID']) {
+    if ($UserID == G::$LoggedUser['ID']) {
         $NumGroupsByUser++;
     }
+    $ArtistSet = [];
 
     foreach ($Artists as $Importance => $ImportanceArtists) {
         foreach ($ImportanceArtists as $Artist) {
-            if (!isset($TopArtists[$Artist['id']])) {
-                $TopArtists[$Artist['id']] = array('data' => $Artist, 'count' => 1);
-            } else {
-                $TopArtists[$Artist['id']]['count']++;
+            if (isset($ArtistSet[$Artist['ArtistID']])) {
+                continue;
             }
+            if (!isset($TopArtists[$Artist['ArtistID']])) {
+                $TopArtists[$Artist['ArtistID']] = array('data' => $Artist, 'count' => 1);
+            } else {
+                $TopArtists[$Artist['ArtistID']]['count']++;
+            }
+            $ArtistSet[$Artist['ArtistID']] = true;
         }
     }
 
@@ -90,52 +95,52 @@ if (
 // Silly hack for people who are on the old setting
 $CollageCovers = isset($LoggedUser['CollageCovers']) ? $LoggedUser['CollageCovers'] : 25 * (abs($LoggedUser['HideCollage'] - 1));
 
-View::show_header($Name, 'browse,collage,bbcode,voting,recommend', 'PageCollageTorrent');
+View::show_header($Name, 'browse,collage,comments,bbcode,voting,recommend', 'PageCollageTorrent');
 ?>
 <div class="LayoutBody">
     <div class="BodyHeader">
         <h2 class="BodyHeader-nav"><?= $Name ?></h2>
         <div class="BodyNavLinks">
             <a href="collages.php" class="brackets">
-                <?= Lang::get('collages.collages_list') ?></a>
+                <?= t('server.collages.collages_list') ?></a>
             <? if (check_perms('site_collages_create')) { ?>
                 <a href="collages.php?action=new" class="brackets">
-                    <?= Lang::get('collages.create_collages') ?></a>
+                    <?= t('server.collages.create_collages') ?></a>
             <?  } ?>
         </div>
         <div class="BodyNavLinks">
             <? if (check_perms('site_collages_subscribe')) { ?>
-                <a href="#" id="subscribelink<?= $CollageID ?>" class="brackets" onclick="CollageSubscribe(<?= $CollageID ?>); return false;"><?= (in_array($CollageID, $CollageSubscriptions) ? Lang::get('collages.unsubscribe') : Lang::get('collages.subscribe')) ?></a>
+                <a href="#" id="subscribelink<?= $CollageID ?>" class="brackets" onclick="CollageSubscribe(<?= $CollageID ?>, '<?= (in_array($CollageID, $CollageSubscriptions) ? t('server.collages.subscribe') : t('server.collages.unsubscribe')) ?>'); return false;"><?= (in_array($CollageID, $CollageSubscriptions) ? t('server.collages.unsubscribe') : t('server.collages.subscribe')) ?></a>
             <?
             }
             if (check_perms('site_collages_delete') || (check_perms('site_edit_wiki') && !$Locked)) {
             ?>
                 <a href="collages.php?action=edit&amp;collageid=<?= $CollageID ?>" class="brackets">
-                    <?= Lang::get('collages.edit_collage') ?></a>
+                    <?= t('server.collages.edit_collage') ?></a>
             <?  } else { ?>
-                <span class="brackets"><?= Lang::get('collages.locked') ?></span>
+                <span class="brackets"><?= t('server.collages.locked') ?></span>
             <?
             }
             if (Bookmarks::has_bookmarked('collage', $CollageID)) {
             ?>
-                <a href="#" id="bookmarklink_collage_<?= $CollageID ?>" class="brackets" onclick="Unbookmark('collage', <?= $CollageID ?>, '<?= Lang::get('global.add_bookmark') ?>'); return false;">
-                    <?= Lang::get('global.remove_bookmark') ?></a>
+                <a href="#" id="bookmarklink_collage_<?= $CollageID ?>" class="brackets" onclick="Unbookmark('collage', <?= $CollageID ?>, '<?= t('server.common.add_bookmark') ?>'); return false;">
+                    <?= t('server.common.remove_bookmark') ?></a>
             <?  } else { ?>
-                <a href="#" id="bookmarklink_collage_<?= $CollageID ?>" class="brackets" onclick="Bookmark('collage', <?= $CollageID ?>, '<?= Lang::get('global.remove_bookmark') ?>'); return false;">
-                    <?= Lang::get('global.add_bookmark') ?></a>
+                <a href="#" id="bookmarklink_collage_<?= $CollageID ?>" class="brackets" onclick="Bookmark('collage', <?= $CollageID ?>, '<?= t('server.common.remove_bookmark') ?>'); return false;">
+                    <?= t('server.common.add_bookmark') ?></a>
             <?  } ?>
             <!-- <a href="#" id="recommend" class="brackets">Recommend</a> -->
             <?
             if (check_perms('site_collages_manage') && !$Locked) {
             ?>
                 <a href="collages.php?action=manage&amp;collageid=<?= $CollageID ?>" class="brackets">
-                    <?= Lang::get('collages.manage_torrents') ?></a>
+                    <?= t('server.collages.manage_collage') ?></a>
             <?  } ?>
             <a href="reports.php?action=report&amp;type=collage&amp;id=<?= $CollageID ?>" class="brackets">
-                <?= Lang::get('collages.report_collage') ?></a>
+                <?= t('server.collages.report_collage') ?></a>
             <? if (check_perms('site_collages_delete') || $CreatorID == $LoggedUser['ID']) { ?>
-                <a href="collages.php?action=delete&amp;collageid=<?= $CollageID ?>&amp;auth=<?= $LoggedUser['AuthKey'] ?>" class="brackets" onclick="return confirm('<?= Lang::get('collages.delete_confirm') ?>');">
-                    <?= Lang::get('global.delete') ?></a>
+                <a href="collages.php?action=delete&amp;collageid=<?= $CollageID ?>&amp;auth=<?= $LoggedUser['AuthKey'] ?>" class="brackets">
+                    <?= t('server.common.delete') ?></a>
             <?  } ?>
         </div>
     </div>
@@ -144,43 +149,39 @@ View::show_header($Name, 'browse,collage,bbcode,voting,recommend', 'PageCollageT
         <div class="Sidebar LayoutMainSidebar-sidebar">
             <div class="SidebarItemCollageCategory SidebarItem Box">
                 <div class="SidebarItem-header Box-header">
-                    <strong><?= Lang::get('collages.category') ?></strong>
+                    <strong><?= t('server.collages.category') ?></strong>
                 </div>
                 <div class="SidebarItem-body Box-body">
-                    <a href="collages.php?action=search&amp;cats[<?= (int)$CollageCategoryID ?>]=1"><?= Lang::get('collages.collagecats')[(int)$CollageCategoryID] ?></a>
+                    <a href="collages.php?action=search&amp;cats[<?= (int)$CollageCategoryID ?>]=1"><?= t('server.collages.collagecats')[(int)$CollageCategoryID] ?></a>
                 </div>
             </div>
-            <div class="SidebarItemCollageDescription SidebarItem Box">
-                <div class="SidebarItem-header Box-header">
-                    <strong><?= Lang::get('collages.description') ?></strong>
-                </div>
-                <div class="SidebarItem-body Box-body HtmlText">
-                    <?= Text::full_format($Description) ?>
-                </div>
-            </div>
+
             <div class="SidebarItemStats SidebarItem Box">
                 <div class="SidebarItem-header Box-header">
-                    <strong><?= Lang::get('collages.statistics') ?></strong>
+                    <strong><?= t('server.collages.statistics') ?></strong>
                 </div>
                 <ul class="SidebarList SidebarItem-body Box-body">
                     <li class="SidebarList-item">
-                        <?= Lang::get('global.torrents') ?>: <?= number_format($NumGroups) ?></li>
+                        <?= t('server.common.torrents') ?>: <?= number_format($NumGroups) ?></li>
                     <? if (!empty($TopArtists)) { ?>
                         <li class="SidebarList-item">
-                            <?= Lang::get('global.artists') ?>: <?= number_format(count($TopArtists)) ?></li>
+                            <?= t('server.common.artists') ?>: <?= number_format(count($TopArtists)) ?></li>
                     <? } ?>
                     <li class="SidebarList-item">
-                        <?= Lang::get('collages.subscribers') ?>: <?= number_format((int)$Subscribers) ?></li>
+                        <?= t('server.collages.subscribers') ?>: <?= number_format((int)$Subscribers) ?></li>
                     <li class="SidebarList-item">
-                        <?= Lang::get('collages.built_by') ?> <?= number_format(count($UserAdditions)) ?>
-                        <?= Lang::get('collages.user') ?><?= (count($UserAdditions) > 1 ? Lang::get('collages.users') : '') ?></li>
+                        <?= t('server.collages.built_by_n_users', ['Values' => [
+                            number_format(count($UserAdditions)),
+                            t('server.collages.user', ['Count' => count($UserAdditions)])
+                        ]]) ?>
+                    </li>
                     <li class="SidebarList-item">
-                        <?= Lang::get('collages.last_updated') ?>: <?= time_diff($Updated) ?></li>
+                        <?= t('server.collages.last_updated') ?>: <?= time_diff($Updated) ?></li>
                 </ul>
             </div>
             <div class="SidebarItemTags SidebarItem Box">
                 <div class="SidebarItem-header Box-header">
-                    <strong><?= Lang::get('collages.top_tags') ?></strong>
+                    <strong><?= t('server.collages.top_tags') ?></strong>
                 </div>
                 <ul class="SidebarItem-body Box-body SidebarList">
                     <?
@@ -191,7 +192,7 @@ View::show_header($Name, 'browse,collage,bbcode,voting,recommend', 'PageCollageT
             <? if (!empty($TopArtists)) { ?>
                 <div class="SidebarItemArtists SidebarItem Box">
                     <div class="SidebarItem-header Box-header">
-                        <strong><?= Lang::get('collages.top_artists') ?></strong>
+                        <strong><?= t('server.collages.top_artists') ?></strong>
                     </div>
                     <ul class="SidebarList SidebarItem-body Box-body">
                         <?
@@ -214,7 +215,7 @@ View::show_header($Name, 'browse,collage,bbcode,voting,recommend', 'PageCollageT
             <?  } ?>
             <div class="SidebarItemCollageContributors SidebarItem Box">
                 <div class="SidebarItem-header Box-header">
-                    <strong><?= Lang::get('collages.top_contributors') ?></strong>
+                    <strong><?= t('server.collages.top_contributors') ?></strong>
                 </div>
                 <ul class="SidebarList SidebarItem-body Box-body">
                     <?
@@ -233,14 +234,14 @@ View::show_header($Name, 'browse,collage,bbcode,voting,recommend', 'PageCollageT
                 </ul>
             </div>
             <? if (check_perms('site_collages_manage') && !isset($PreventAdditions)) {
-                $BatchAdd = Lang::get('collages.batch_add');
-                $IndividualAdd = Lang::get('collages.individual_add');
+                $BatchAdd = t('server.collages.batch_add');
+                $IndividualAdd = t('server.collages.individual_add');
             ?>
                 <div class="SidebarItemCollageTorrentAdd SidebarItem Box">
                     <div class="SidebarItem-header Box-header">
-                        <strong><?= Lang::get('collages.add_torrent_group') ?></strong>
-                        <span class="floatright">
-                            <a href="#" onclick="$('.add_torrent_container').toggle_class('hidden'); this.innerHTML = (this.innerHTML == '<?= $BatchAdd ?>' ? '<?= $IndividualAdd ?>' : '<?= $BatchAdd ?>'); return false;" class="brackets"><?= Lang::get('collages.batch_add') ?></a></span>
+                        <strong><?= t('server.collages.add_torrent_group') ?></strong>
+                        <div class="SidebarItem-headerActions"> <a href="#" onclick="$('.add_torrent_container').toggle_class('hidden'); this.innerHTML = (this.innerHTML == '<?= $BatchAdd ?>' ? '<?= $IndividualAdd ?>' : '<?= $BatchAdd ?>'); return false;" class="brackets"><?= t('server.collages.batch_add') ?></a>
+                        </div>
                     </div>
                     <div class="pad add_torrent_container">
                         <form class="FormOneLine FormCollageAddTorrentGroup" name="torrent" action="collages.php" method="post">
@@ -251,11 +252,11 @@ View::show_header($Name, 'browse,collage,bbcode,voting,recommend', 'PageCollageT
                                 <input class="Input" type="text" size="20" name="url" />
                             </div>
                             <div class="submit_div">
-                                <input class="Button" type="submit" value="<?= Lang::get('global.add') ?>" />
+                                <input class="Button" type="submit" value="<?= t('server.common.add') ?>" />
                             </div>
                         </form>
                         <span style="font-style: italic;">
-                            <?= Lang::get('collages.add_torrent_group_note1') ?></span>
+                            <?= t('server.collages.add_torrent_group_note1') ?></span>
 
                     </div>
                     <div class="pad hidden add_torrent_container">
@@ -267,50 +268,72 @@ View::show_header($Name, 'browse,collage,bbcode,voting,recommend', 'PageCollageT
                                 <textarea class="Input" name="urls" rows="5" cols="25" style="white-space: pre; word-wrap: normal; overflow: auto;"></textarea>
                             </div>
                             <div class="submit_div">
-                                <input class="Button" type="submit" value="<?= Lang::get('global.add') ?>" />
+                                <input class="Button" type="submit" value="<?= t('server.common.add') ?>" />
                             </div>
                         </form>
                         <span style="font-style: italic;">
-                            <?= Lang::get('collages.add_torrent_group_note2') ?></span>
+                            <?= t('server.collages.add_torrent_group_note2') ?></span>
 
                     </div>
                 </div>
             <? } ?>
         </div>
         <div class="LayoutMainSidebar-main">
-            <div class="Box">
-                <div class="Box-body">
+            <div class="Group">
+                <div class="Group-header">
+                    <div class="Group-headerTitle">
+                        <strong><?= t('server.collages.description') ?></strong>
+                    </div>
+                </div>
+                <div class="Group-body HtmlText">
+                    <?= Text::full_format($Description) ?>
+                </div>
+            </div>
+            <div class="Group">
+                <div class="Group-header">
+                    <div class="Group-headerTitle">
+                        <?= t('server.index.moviegroups') ?>
+                    </div>
+                    <div class="Group-headerActions">
+                        <? renderTorrentViewButton(TorrentViewScene::Collage);
+                        ?>
+                    </div>
+                </div>
+                <div class="Group-body">
                     <?
                     $Groups = [];
                     foreach ($GroupIDs as $GroupID) {
                         $Groups[] = $TorrentList[$GroupID];
                     }
-                    $tableRender = new TorrentGroupCoverTableView($Groups);
+                    $tableRender = newGroupTorrentView(TorrentViewScene::Collage, $Groups);
                     $tableRender->render();
                     $Pages = Format::get_pages($Page, $NumComments, CONFIG['TORRENT_COMMENTS_PER_PAGE'], 9, '#comments');
                     ?>
                 </div>
             </div>
-            <div class="u-vstack" id="torrent_comments">
-                <div class="BodyNavLinks"><a name="comments"></a>
-                    <?= $Pages ?>
+            <div class="Group">
+                <div class="Group-header">
+                    <div class="Group-headerTitle">
+                        <?= t('server.collages.comments') ?>
+                    </div>
                 </div>
-                <?
-                CommentsView::render_comments($Thread, $LastRead, "collages.php?id=$CollageID");
-                ?>
-                <div class="BodyNavLinks">
-                    <?= $Pages ?>
+                <div class="Group-body" id="torrent_comments">
+                    <? View::pages($Pages) ?>
+                    <?
+                    CommentsView::render_comments($Thread, $LastRead, "collages.php?id=$CollageID");
+                    ?>
+                    <? View::pages($Pages) ?>
+                    <?
+                    View::parse('generic/reply/quickreply.php', array(
+                        'InputName' => 'pageid',
+                        'InputID' => $CollageID,
+                        'Action' => 'comments.php?page=collages',
+                        'InputAction' => 'take_post',
+                        'TextareaCols' => 65,
+                        'SubscribeBox' => true
+                    ));
+                    ?>
                 </div>
-                <?
-                View::parse('generic/reply/quickreply.php', array(
-                    'InputName' => 'pageid',
-                    'InputID' => $CollageID,
-                    'Action' => 'comments.php?page=collages',
-                    'InputAction' => 'take_post',
-                    'TextareaCols' => 65,
-                    'SubscribeBox' => true
-                ));
-                ?>
             </div>
         </div>
     </div>

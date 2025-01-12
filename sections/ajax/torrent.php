@@ -1,7 +1,7 @@
 <?
 require(CONFIG['SERVER_ROOT'] . '/sections/torrents/functions.php');
 
-$GroupAllowed = array('WikiBody', 'WikiImage', 'ID', 'Name', 'Year', 'ReleaseType', 'CategoryID', 'Time');
+$GroupAllowed = array('WikiBody', 'MainWikiBody', 'WikiImage', 'ID', 'Name', 'Year', 'ReleaseType', 'CategoryID', 'Time');
 $TorrentAllowed = array('ID',  'RemasterYear', 'RemasterTitle', 'Scene', 'FileCount', 'Size', 'Seeders', 'Leechers', 'Snatched', 'FreeTorrent', 'Time', 'Description', 'FileList', 'FilePath', 'UserID', 'Username');
 
 $TorrentID = (int)$_GET['id'];
@@ -36,7 +36,6 @@ $Torrent = $TorrentCache;
 $TorrentDetails = $TorrentCache['Group'];
 $GroupID = $TorrentDetails['ID'];
 
-$ArtistForm = Artists::get_artist($GroupID);
 if ($TorrentDetails['CategoryID'] == 0) {
     $CategoryName = "Unknown";
 } else {
@@ -45,12 +44,13 @@ if ($TorrentDetails['CategoryID'] == 0) {
 
 $JsonTorrentDetails = array(
     'description' => html_entity_decode(Text::full_format($TorrentDetails['WikiBody'])),
+    'mainDescription' => html_entity_decode(Text::full_format($TorrentDetails['MainWikiBody'])),
     'conver' => $TorrentDetails['WikiImage'],
     'id' => (int)$TorrentDetails['ID'],
     'name' => $TorrentDetails['Name'],
     'subName' => html_entity_decode($TorrentDetails['SubName']),
     'year' => (int)$TorrentDetails['Year'],
-    'releaseType' => Lang::get('torrents.release_types')[$TorrentDetails['ReleaseType']],
+    'releaseType' => t('server.torrents.release_types')[$TorrentDetails['ReleaseType']],
     'categoryId' => (int)$TorrentDetails['CategoryID'],
     'categoryName' => $CategoryName,
     'time' => $TorrentDetails['Time'],
@@ -69,7 +69,7 @@ $JsonTorrentDetails = array(
     'language' => $TorrentDetails['Language'],
 );
 
-$Reports = Torrents::get_reports($TorrentID);
+$Reports = Reports::get_reports($TorrentID);
 if (count($Reports) > 0) {
     $Torrent['Reported'] = true;
 } else {

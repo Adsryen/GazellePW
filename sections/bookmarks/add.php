@@ -46,10 +46,11 @@ if (!$DB->has_results()) {
         $Cache->delete_value("bookmarks_group_ids_$UserID");
 
         $DB->query("
-			SELECT ID, ReleaseType, Name, SubName, Year, WikiBody, TagList
+			SELECT ID, ReleaseType, Name, SubName, Year, WikiBody, MainWikiBody
 			FROM torrents_group
 			WHERE ID = $PageID");
         $Group =  G::$DB->next_record(MYSQLI_ASSOC, false);
+        // TODO by qwerty fix TagList
         $TagList = str_replace('_', '.', $Group['TagList']);
 
         $DB->query("
@@ -61,7 +62,7 @@ if (!$DB->has_results()) {
 
             $Title = Torrents::display_simple_group_name($Group, null, false);
             if ($Group['ReleaseType'] > 0) {
-                $Title .= ' [' . Lang::get('torrents.release_types')[$Group['ReleaseType']] . ']';
+                $Title .= ' [' . t('server.torrents.release_types')[$Group['ReleaseType']] . ']';
             }
             $Details = '';
             $Details .= trim($Torrent['Codec']) . ' / ' . trim($Torrent['Source']) . ' / ' . trim($Torrent['Resolution']) . ' / ' . trim($Torrent['Container']) . ' / ' . trim($Torrent['Processing']);
@@ -70,13 +71,13 @@ if (!$DB->has_results()) {
             }
             if (Torrents::torrent_freeleech($Torrent)) {
                 $Details .= ' / Freeleech!';
-            } else if ($Torrent['FreeTorrent'] == '2') {
+            } else if ($Torrent['FreeTorrent'] == Torrents::Neutral) {
                 $Details .= ' / Neutral Leech!';
-            } else if ($Torrent['FreeTorrent'] == '11') {
+            } else if ($Torrent['FreeTorrent'] == Torrents::OneFourthOff) {
                 $Details .= ' / 25% off!';
-            } else if ($Torrent['FreeLTorrent'] == '12') {
+            } else if ($Torrent['FreeLTorrent'] == Torrents::TwoFourthOff) {
                 $Details .= ' / 50% off!';
-            } else if ($Torrent['FreeTOrrent'] == '13') {
+            } else if ($Torrent['FreeTOrrent'] == Torrents::ThreeFourthOff) {
                 $Details .= ' / 75% off!';
             }
 
@@ -85,9 +86,10 @@ if (!$DB->has_results()) {
             }
             $TorrentID = $Torrent['ID'];
             $UploaderInfo = Users::user_info($UploaderID);
+            $Body = Lang::choose_content($Group['MainWikiBody'], $Group['WikiBody']);
             $Item = $Feed->item(
                 $Title,
-                Text::strip_bbcode($Group['WikiBody']),
+                Text::strip_bbcode($Body),
                 'torrents.php?action=download&amp;authkey=[[AUTHKEY]]&amp;torrent_pass=[[PASSKEY]]&amp;id=' . $TorrentID,
                 $UploaderInfo['Username'],
                 "torrents.php?id=$PageID",

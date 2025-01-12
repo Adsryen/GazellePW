@@ -1,6 +1,9 @@
 <?
 
 use Gazelle\Torrent\EditionInfo;
+use Gazelle\Torrent\Language;
+use Gazelle\Torrent\Region;
+use Gazelle\Torrent\Subtitle;
 
 class TorrentSearch {
     const TAGS_ANY = 0;
@@ -18,7 +21,10 @@ class TorrentSearch {
         'seeders' => 'seeders',
         'leechers' => 'leechers',
         'snatched' => 'snatched',
-        'random' => 1
+        'random' => 1,
+        'rtrating' => 'rtrating',
+        'imdbrating' => 'imdbrating',
+        'doubanrating' => 'doubanrating',
     );
 
     /**
@@ -31,6 +37,9 @@ class TorrentSearch {
         'seeders' => 'sumseeders',
         'leechers' => 'sumleechers',
         'snatched' => 'sumsnatched',
+        'rtrating' => 'rtrating',
+        'imdbrating' => 'imdbrating',
+        'doubanrating' => 'doubanrating',
         'random' => 1
     );
 
@@ -60,6 +69,7 @@ class TorrentSearch {
         'buy' => false,
         'chinesedubbed' => false,
         'specialsub' => false,
+        'checked' => false,
     );
 
     /**
@@ -70,7 +80,6 @@ class TorrentSearch {
         'groupname' => 1,
         'editioninfo' => 1,
         'filelist' => 1,
-        'subtitle' => 1,
         'searchstr' => 1,
         'taglist' => 1,
         'description' => 1,
@@ -101,6 +110,7 @@ class TorrentSearch {
         'buy' => 1,
         'chinesedubbed' => 1,
         'specialsub' => 1,
+        'checked' => 1,
     );
 
     /**
@@ -136,6 +146,9 @@ class TorrentSearch {
         'taglist' => ',',
         'remtitle' => ',',
         'artistname' => ',',
+        'rmtitle' => ',',
+        'region' => ',',
+        'language' => ',',
         'subtitles' => ','
     );
 
@@ -424,6 +437,11 @@ class TorrentSearch {
                     return;
                 }
                 break;
+            case 'checked':
+                if (!$this->search_checked($Value)) {
+                    return;
+                }
+                break;
             case 'rtrating':
                 if (!$this->search_rtrating($Value)) {
                     return;
@@ -432,7 +450,7 @@ class TorrentSearch {
             case 'freetorrent':
                 if (Torrents::global_freeleech()) {
                     if ($Value != 1) {
-                        // temp code 
+                        // temp code
                         $this->SphQL->where('freetorrent', -1);
                     } else {
                         return;
@@ -508,6 +526,12 @@ class TorrentSearch {
             $this->search_taglist($Term);
         } elseif ($Field === 'remtitle') {
             $this->search_remtitle($Field, $Term);
+        } elseif ($Field === 'language') {
+            $this->search_language($Field, $Term);
+        } elseif ($Field === 'region') {
+            $this->search_region($Field, $Term);
+        } elseif ($Field === 'subtitles') {
+            $this->search_subtitle($Field, $Term);
         } elseif ($Field === 'processing') {
             $this->search_processing($Term);
         } else {
@@ -534,7 +558,7 @@ class TorrentSearch {
             if (isset($this->Terms['taglist']['exclude'])) {
                 $AllTags = array_merge($AllTags, $this->Terms['taglist']['exclude']);
             }
-            $this->RawTerms['taglist'] = str_replace('_', '.', implode(', ', $AllTags));
+            $this->RawTerms['taglist'] = str_replace('_', '.', implode(',', $AllTags));
         }
         if (isset($this->Terms['processing'])) {
             $this->Temrs['processing']['operator'] = self::SPH_BOOL_OR;
@@ -565,10 +589,8 @@ class TorrentSearch {
             } elseif (in_array($Word, $SearchProcessings)) {
                 $this->add_word('processing', $Word);
             } else {
-                // Supports Hello.World 
+                // Supports Hello.World
                 $Word = str_replace('.', ' ', $Word);
-                // Supports *he*
-                $Word = "*$Word*";
                 $this->add_word('searchstr', $Word);
             }
         }
@@ -594,6 +616,8 @@ class TorrentSearch {
      * @param string $Term Given search expression
      */
     private function search_taglist($Term) {
+        $TagArray = explode(',', $Term);
+        $Term = implode(',', Tags::main_name($TagArray));
         $Term = strtr($Term, '.', '_');
         $this->add_field('taglist', $Term);
     }
@@ -604,14 +628,50 @@ class TorrentSearch {
     }
 
     private function search_remtitle($Field, $Term) {
-        if (isset(self::$FieldSeparators[$Term])) {
-            $Separator = self::$FieldSeparators[$Term];
+        if (isset(self::$FieldSeparators[$Field])) {
+            $Separator = self::$FieldSeparators[$Field];
         } else {
             $Separator = self::$FieldSeparators[''];
         }
         $Words = explode($Separator, $Term);
         foreach ($Words as $Word) {
             $this->add_word($Field, EditionInfo::key($Word));
+        }
+    }
+
+    private function search_region($Field, $Term) {
+        if (isset(self::$FieldSeparators[$Field])) {
+            $Separator = self::$FieldSeparators[$Field];
+        } else {
+            $Separator = self::$FieldSeparators[''];
+        }
+        $Words = explode($Separator, $Term);
+        foreach ($Words as $Word) {
+            $this->add_word($Field, Region::sphinx_key(trim($Word)));
+        }
+    }
+
+    private function search_language($Field, $Term) {
+        if (isset(self::$FieldSeparators[$Field])) {
+            $Separator = self::$FieldSeparators[$Field];
+        } else {
+            $Separator = self::$FieldSeparators[''];
+        }
+        $Words = explode($Separator, $Term);
+        foreach ($Words as $Word) {
+            $this->add_word($Field, Language::sphinxKey(trim($Word)));
+        }
+    }
+
+    private function search_subtitle($Field, $Term) {
+        if (isset(self::$FieldSeparators[$Field])) {
+            $Separator = self::$FieldSeparators[$Field];
+        } else {
+            $Separator = self::$FieldSeparators[''];
+        }
+        $Words = explode($Separator, $Term);
+        foreach ($Words as $Word) {
+            $this->add_word($Field, Subtitle::sphinxKey(trim($Word)));
         }
     }
 
@@ -639,6 +699,14 @@ class TorrentSearch {
             return false;
         }
         return true;
+    }
+    private function search_checked($Term) {
+        if ($Term == 1) {
+            $this->SphQL->where_gt('checked', 1, true);
+        } else {
+            $this->SphQL->where('checked', 0);
+        }
+        $this->UsedTorrentAttrs['checked'] = $Term;
     }
     private function search_doubanrating($Term) {
         $DoubanRatings = explode('-', $Term);
@@ -860,6 +928,9 @@ class TorrentSearch {
                     unset($this->Groups[$GroupID]['Torrents'][$TorrentID]);
                 }
             }
+            if (count($this->Groups[$GroupID]['Torrents']) == 0) {
+                unset($this->Groups[$GroupID]);
+            }
         }
     }
 
@@ -888,6 +959,14 @@ class TorrentSearch {
         }
         if (isset($this->UsedTorrentAttrs['specialsub'])) {
             if ((int)$Torrent['SpecialSub'] != 1) {
+                return false;
+            }
+        }
+        if (isset($this->UsedTorrentAttrs['checked'])) {
+            if ($Torrent['Checked'] > 0 && $this->UsedTorrentAttrs['checked'] == 0) {
+                return false;
+            }
+            if ($Torrent['Checked'] == 0 && $this->UsedTorrentAttrs['checked'] == 1) {
                 return false;
             }
         }

@@ -61,6 +61,7 @@ Where
   display: flex;
   gap: var(--global-space-sm);
   flex-wrap: wrap;
+  align-items: center;
 }
 
 /* body */
@@ -75,16 +76,20 @@ Where
 }
 .TableForumPostBody-actions {
   margin-top: auto;
-  padding-top: 7px;
+  padding-top: 5px;
 }
 .TableForumPostBody-actionReward .Input[type='text'] {
   width: 200px;
 }
 .TableForumPostBody-divider {
-  margin-top: 2rem;
-  margin-bottom: 3px;
+  margin-top: 1rem;
+  margin-bottom: 10px;
   width: 100%;
   box-sizing: content-box;
   overflow: visible;
   border-top: var(--global-border-box);
+}
+
+.TableForumPost.sticky_post {
+  border: 1px, solid, var(--global-color-warning);
 }

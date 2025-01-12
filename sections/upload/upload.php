@@ -13,18 +13,20 @@ require(CONFIG['SERVER_ROOT'] . '/classes/torrent_form.class.php');
 
 ini_set('max_file_uploads', '100');
 
-View::show_header(Lang::get('upload.upload'), '', 'PageUploadHome');
+View::show_header(t('server.upload.upload'), '', 'PageUploadHome');
 
 if (empty($Properties) && !empty($_GET['groupid']) && is_number($_GET['groupid'])) {
     $DB->query('
 		SELECT
 			tg.ID as GroupID,
+            tg.ID,
 			tg.CategoryID,
 			tg.Name,
 			tg.SubName,
 			tg.Year,
 			tg.WikiImage AS Image,
 			tg.WikiBody AS GroupDescription,
+			tg.MainWikiBody AS GroupMainDescription,
 			tg.IMDBID,
 			tg.ReleaseType
 		FROM torrents_group AS tg
@@ -74,17 +76,10 @@ if (empty($Err)) {
     $Err = null;
 }
 $TorrentForm = new TORRENT_FORM($Properties, $Err);
-
-$GenreTags = $Cache->get_value('genre_tags');
-if (!$GenreTags) {
-    $DB->query("
-		SELECT Name
-		FROM tags
-		WHERE TagType = 'genre'
-		ORDER BY Name");
-    $GenreTags = $DB->collect('Name');
-    $Cache->cache_value('genre_tags', $GenreTags, 3600 * 6);
+if (!empty($_GET['groupid'])) {
+    $Name = Torrents::group_name($Properties, true);
 }
+
 
 $DB->query('
 	SELECT
@@ -106,46 +101,59 @@ $HideDNU = check_perms('torrents_hide_dnu') && !$NewDNU;
 <div class="LayoutBody">
     <div class="BodyHeader">
         <div class="BodyHeader-nav">
-            <?= Lang::get('upload.upload') ?>
+            <?= t('server.upload.upload') ?>
         </div>
-        <div id="dnu_container" class="<?= (check_perms('torrents_hide_dnu') ? 'BoxBody' : '') ?>">
-            <h3 id="dnu_header"><?= Lang::get('upload.torrent_diff') ?></h3>
-            <p><?= $NewDNU ? '<strong class="u-colorWarning">' : '' ?><?= Lang::get('upload.last_update') ?>: <?= time_diff($Updated) ?><?= $NewDNU ? '</strong>' : '' ?></p>
-            <p><?= Lang::get('upload.upload_note') ?>
-                <? if ($HideDNU) { ?>
-                    <span id="showdnu"><a href="#" onclick="$('#dnulist').gtoggle(); this.innerHTML = (this.innerHTML == 'Hide' ? 'Show' : 'Hide'); return false;" class="brackets"><?= Lang::get('global.show') ?></a></span>
-                <?  } ?>
-            </p>
-            <div id="dnulist" class="TableContainer" class="<?= ($HideDNU ? 'hidden' : '') ?>">
-                <table class="TableUploadRule Table">
-                    <tr class="Table-rowHeader">
-                        <td class="Table-cell" width="50%"><strong><?= Lang::get('upload.name') ?></strong></td>
-                        <td class="Table-cell"><strong><?= Lang::get('upload.explain') ?></strong></td>
-                    </tr>
-                    <? $TimeDiff = strtotime('-1 month', strtotime('now'));
-                    foreach ($DNU as $BadUpload) {
-                        list($Name, $Comment, $Updated) = $BadUpload;
-                    ?>
-                        <tr class="Table-row">
-                            <td class="Table-cell">
-                                <div class="HtmlText">
-                                    <?= Text::full_format($Name) . "\n" ?>
-                                    <? if ($TimeDiff < strtotime($Updated)) { ?>
-                                        <strong class="u-colorWarning">(New!)</strong>
-                                    <? } ?>
-                                </div>
-                            </td>
-                            <td class="Table-cell">
-                                <div class="HtmlText">
-                                    <?= Text::full_format($Comment) ?>
-                                </div>
-                            </td>
-                        </tr>
-                    <? } ?>
-                </table>
+        <? if ($Name) { ?>
+            <div class="BodyHeader-subNav">
+                <?= $Name ?>
             </div>
-        </div>
-        <?= ($HideDNU ? '<br />' : '') ?>
+        <? } ?>
+        <? if (!$Name) { ?>
+            <div id="dnu_container" class="Group">
+                <div class="Group-header">
+                    <div class="Group-headerTitle"><?= t('server.upload.torrent_diff') ?></div>
+                    <? if ($HideDNU) { ?>
+                        <div class="Group-headerActions" id="showdnu">
+                            <a href="#" onclick="globalapp.toggleAny(event, '#dnulist')">
+                                <span class="u-toggleAny-show <?= $HideDNU ? '' : 'u-hidden' ?>"><?= t('server.common.show') ?></span>
+                                <span class="u-toggleAny-hide <?= $HideDNU ? 'u-hidden' : '' ?>"><?= t('server.common.hide') ?></span>
+                            </a>
+                        </div>
+                    <?  } ?>
+                </div>
+                <div id="dnulist" class="TableContainer Group-body <?= ($HideDNU ? 'u-hidden' : '') ?>">
+                    <div><?= $NewDNU ? '<strong class="u-colorWarning">' : '' ?><?= t('server.upload.last_update') ?>: <?= time_diff($Updated) ?><?= $NewDNU ? '</strong>' : '' ?></div>
+                    <div><?= t('server.upload.upload_note') ?>
+                    </div>
+                    <table class="TableUploadRule Table">
+                        <tr class="Table-rowHeader">
+                            <td class="Table-cell" width="50%"><strong><?= t('server.upload.name') ?></strong></td>
+                            <td class="Table-cell"><strong><?= t('server.upload.explain') ?></strong></td>
+                        </tr>
+                        <? $TimeDiff = strtotime('-1 month', strtotime('now'));
+                        foreach ($DNU as $BadUpload) {
+                            list($Name, $Comment, $Updated) = $BadUpload;
+                        ?>
+                            <tr class="Table-row">
+                                <td class="Table-cell">
+                                    <div class="HtmlText">
+                                        <?= Text::full_format($Name) . "\n" ?>
+                                        <? if ($TimeDiff < strtotime($Updated)) { ?>
+                                            <strong class="u-colorWarning">(New!)</strong>
+                                        <? } ?>
+                                    </div>
+                                </td>
+                                <td class="Table-cell">
+                                    <div class="HtmlText">
+                                        <?= Text::full_format($Comment) ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <? } ?>
+                    </table>
+                </div>
+            </div>
+        <? } ?>
     </div>
 
     <div class="BodyContent">

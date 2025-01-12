@@ -30,6 +30,7 @@ $DB->query("
         tg.RTTitle,
 		tg.WikiImage,
 		tg.WikiBody,
+        tg.MainWikiBody,
 		tg.Year,
 		tg.ReleaseType,
 		tg.CategoryID
@@ -45,100 +46,147 @@ $IMDBID = $Group['IMDBID'];
 $RTTitle = $Group['RTTItle'];
 $Image = $Group['WikiImage'];
 $Body = $Group['WikiBody'];
+$MainBody = $Group['MainWikiBody'];
 $DoubanID = $Group['DoubanID'];
 $Year = $Group['Year'];
 $ReleaseType = $Group['ReleaseType'];
 $CategoryID = $Group['CategoryID'];
 
-
-View::show_header(Lang::get('torrents.edit_torrent_group'), '', 'PageTorrentEditGroup');
+View::show_header(t('server.torrents.edit_torrent_group'), '', 'PageTorrentEditGroup');
 
 // Start printing form
 ?>
 <div class="LayoutBody">
 
     <div class="BodyHeader">
-        <h2 class="BodyHeader-nav"><?= page_title_conn([Lang::get('global.edit'), Torrents::group_name($Group)]) ?></h2>
+        <div class="BodyHeader-nav"><?= t('server.torrents.edit_torrent_group') ?></div>
+        <div class="BodyHeader-subNav"><?= Torrents::group_name($Group) ?></div>
     </div>
     <div class="BodyNavLinks">
-        <a class="brackets" href="#movie_info_edit"><?= Lang::get('torrents.torrent_group_meta_editing') ?></a>
-        <a class="brackets" href="#group_edit"><?= Lang::get('torrents.non_wiki_torrent_group_editing') ?></a>
-        <a class="brackets" href="#rename"><?= Lang::get('torrents.rename') ?></a>
-        <a class="brackets" href="#merge"><?= Lang::get('torrents.merge_with') ?></a>
+        <a class="brackets" href="#movie_info_edit"><?= t('server.torrents.torrent_group_meta_editing') ?></a>
+        <a class="brackets" href="#group_edit"><?= t('server.torrents.non_wiki_torrent_group_editing') ?></a>
+        <a class="brackets" href="#merge"><?= t('server.torrents.merge_with') ?></a>
 
     </div>
 
     <div>
-        <form class="edit_form" name="torrent_group" action="torrents.php" method="post">
+        <form class="edit_form Form-rowList" name="torrent_group" action="torrents.php" method="post">
             <input type="hidden" name="action" value="takegroupedit" />
             <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
             <input type="hidden" name="groupid" value="<?= $GroupID ?>" />
-            <table id="database_ids_table" class="Form-rowList Table" variant="header">
+            <table id="database_ids_table" class="Table" variant="header">
                 <tr class="Form-rowHeader" id="movie_info_edit">
-                    <td class="Form-title"><?= Lang::get('torrents.torrent_group_meta_editing') ?></td>
+                    <td class="Form-title"><?= t('server.torrents.torrent_group_meta_editing') ?></td>
+                </tr>
+
+                <tr class="Form-row" variant="">
+                    <td class="Form-label">
+                        <?= t('server.torrents.release_type') ?>:
+                    </td>
+                    <td class="Form-inputs">
+                        <select class="Input" id="releasetype" name="releasetype">
+                            <? foreach ($ReleaseTypes as $Key) { ?>
+                                <option class="Select-option" value="<?= $Key ?>" <?= ($Key == $ReleaseType ? ' selected="selected"' : '') ?>>
+                                    <?= t('server.torrents.release_types')[$Key] ?>
+                                </option>
+                            <? } ?>
+                        </select>
+                    </td>
                 </tr>
                 <tr class="Form-row">
+                    <td class="Form-label"><?= t('server.torrents.ft_year') ?>:</td>
+                    <td class="Form-inputs">
+                        <input class="Input is-small" type="text" name="year" size="10" value="<?= $Year ?>" />
+                    </td>
+                </tr>
+                <tr class="Form-row">
+                    <td class="Form-label">
+                        <?= t('server.torrents.imdb_id') ?>:
+                    </td>
+                    <td class="Form-inputs">
+                        <div>
+                            <input class="Input is-small" type="text" <?= check_perms('users_mod') ? '' : 'readonly' ?> name="imdbid" size="20" value="<?= $IMDBID ?>" placeholder="tt1234567">
+                            <input class="hidden" id='lack_of_imdb_info'>
+                            <label class="hidden" for="lack_of_imdb_info"><?= t('server.torrents.lack_of_info_now') ?></label>
+                        </div>
+                    </td>
+                </tr>
+                <tr class="Form-row">
+                    <td class="Form-label">
+                        <?= t('server.torrents.douban_id') ?>:
+                    </td>
+                    <td class="Form-inputs">
+                        <div>
+                            <input class=" Input is-small" type="text" name="doubanid" size="20" value="<?= $DoubanID ? $DoubanID : '' ?>" placeholder="12345678" />
+                            <input class="hidden" id='lack_of_douban_info'>
+                            <label class="hidden" for="lack_of_douban_info"><?= t('server.torrents.lack_of_info_now') ?></label>
+                        </div>
+                    </td>
+                </tr>
+                <tr class="Form-row">
+                    <td class="Form-label">
+                        <?= t('server.torrents.rt_title') ?>:
+                    </td>
+                    <td class="Form-inputs">
+                        <div>
+                            <input class=" Input is-small" type="text" name="rttitle" value="<?= $RTTitle ?>" size="20" placeholder="english_name" />
+                            <input class="hidden" id='lack_of_rt_info'>
+                            <label class="hidden" for="lack_of_rt_info"><?= t('server.torrents.lack_of_info_now') ?></label>
+                        </div>
+                    </td>
+                </tr>
+
+
+
+                <tr class="Form-row">
+                    <td class="Form-label">
+                        <?= t('server.upload.chinese_movie_synopsis') ?>:
+                    </td>
                     <td class="Form-items">
-                        <?= Lang::get('torrents.image') ?>:
+                        <?php new TEXTAREA_PREVIEW('body', 'body', $Body, 91, 20, false, false); ?>
+                    </td>
+                </tr>
+                <tr class="Form-row">
+                    <td class="Form-label">
+                        <?= t('server.upload.english_movie_synopsis') ?>:
+                    </td>
+                    <td class="Form-items">
+                        <?php new TEXTAREA_PREVIEW('mainbody', 'mainbody', $MainBody, 91, 20, false, false); ?>
+                    </td>
+                </tr>
+                <tr class="Form-row">
+                    <td class="Form-label"><?= t('server.torrents.group_title') ?>:</td>
+                    <td class="Form-inputs">
+                        <input class="Input" type="text" name="name" size="92" value="<?= $Name ?>" />
+                    </td>
+                </tr>
+                <tr class="Form-row">
+                    <td class="Form-label"><?= t('server.torrents.sub_title') ?>:</td>
+                    <td class="Form-inputs">
+                        <input class="Input" type="text" name="subname" size="92" value="<?= $SubName ?>" />
+                    </td>
+                </tr>
+                <tr class="Form-row">
+                    <td class="Form-label">
+                        <?= t('server.torrents.image') ?>:
+                    </td>
+                    <td class="Form-inputs">
                         <input class="Input" type="text" name="image" size="92" value="<?= $Image ?>" />
                     </td>
                 </tr>
-                <tr class="Form-row"">
-                    <td class=" Form-items"><?= Lang::get('upload.chinese_movie_synopsis') ?>:
-                    <?php new TEXTAREA_PREVIEW('body', 'body', $Body, 91, 20, false, false); ?>
-                    </td>
-                </tr>
-                <tr class="Form-row" variant="">
-                    <td class="Form-items">
-                        <div>
-                            <?= Lang::get('torrents.release_type') ?>:
-                            <select class="Input" id="releasetype" name="releasetype">
-                                <? foreach ($ReleaseTypes as $Key) { ?>
-                                    <option class="Select-option" value="<?= $Key ?>" <?= ($Key == $ReleaseType ? ' selected="selected"' : '') ?>>
-                                        <?= Lang::get('torrents.release_types')[$Key] ?>
-                                    </option>
-                                <? } ?>
-                            </select>
-                        </div>
-                    </td>
-                </tr>
                 <tr class="Form-row">
-                    <td class="FormOneLine Form-inputs">
-                        <div>
-                            <div><?= Lang::get('torrents.imdb_id') ?>:</div>
-                            <div><input class="Input is-small" type="text" <?= check_perms('users_mod') ? '' : 'readonly' ?> name="imdbid" size="20" value="<?= $IMDBID ?>" placeholder="tt1234567">
-                                <input class="hidden" id='lack_of_imdb_info'>
-                                <label class="hidden" for="lack_of_imdb_info"><?= Lang::get('torrents.lack_of_info_now') ?></label>
-                            </div>
-                        </div>
-                        <div>
-                            <div><?= Lang::get('torrents.douban_id') ?>:</div>
-                            <div><input class=" Input is-small" type="text" name="doubanid" size="20" value="<?= $DoubanID ? $DoubanID : '' ?>" placeholder="12345678" />
-                                <input class="hidden" id='lack_of_douban_info'>
-                                <label class="hidden" for="lack_of_douban_info"><?= Lang::get('torrents.lack_of_info_now') ?></label>
-                            </div>
-                        </div>
-                        <div>
-                            <div><?= Lang::get('torrents.rt_title') ?>:</div>
-
-                            <div><input class=" Input is-small" type="text" name="rttitle" value="<?= $RTTitle ?>" size="20" placeholder="english_name" />
-                                <input class="hidden" id='lack_of_rt_info'>
-                                <label class="hidden" for="lack_of_rt_info"><?= Lang::get('torrents.lack_of_info_now') ?></label>
-                            </div>
-                        </div>
+                    <td class="Form-label">
+                        <?= t('server.torrents.edit_summary') ?>:
                     </td>
-                </tr>
-                <tr class="Form-row">
-                    <td class="Form-items"><?= Lang::get('torrents.edit_summary') ?>:
+                    <td class="Form-inputs">
                         <input class=" Input" type="text" name="summary" size="92" />
                     </td>
                 </tr>
                 <tr class="Form-row">
-                    <td class="Form-items">
+                    <td rowspan="2">
                         <div style="text-align: center;">
-                            <input class="Button" type="submit" value="<?= Lang::get('global.submit') ?>" />
+                            <input class="Button" type="submit" value="<?= t('server.common.submit') ?>" />
                         </div>
-
                     </td>
                 </tr>
             </table>
@@ -158,111 +206,100 @@ View::show_header(Lang::get('torrents.edit_torrent_group'), '', 'PageTorrentEdit
                 <input type="hidden" name="groupid" value="<?= $GroupID ?>" />
                 <table cellpadding="3" cellspacing="1" border="0" class="Table" width="100%">
                     <tr class="Form-rowHeader" id="group_edit">
-                        <td class="Form-title"><?= Lang::get('torrents.non_wiki_torrent_group_editing') ?></td>
-                    </tr>
-                    <tr class="Form-row">
-                        <td colspan="2" class="center"><?= Lang::get('torrents.torrent_group_editing_note') ?></td>
-                    </tr>
-                    <tr class="Form-row">
-                        <td class="Form-label"><?= Lang::get('torrents.ft_year') ?>:</td>
-                        <td class="Form-inputs">
-                            <input class="Input is-small" type="text" name="year" size="10" value="<?= $Year ?>" />
-                        </td>
+                        <td class="Form-title"><?= t('server.torrents.non_wiki_torrent_group_editing') ?></td>
                     </tr>
 
                     <? if (check_perms('torrents_freeleech')) { ?>
                         <tr class="Form-row">
-                            <td class="Form-label"><?= Lang::get('torrents.torrent_group_leech_status') ?>:</td>
+                            <td class="Form-label"><?= t('server.torrents.torrent_group_leech_status') ?>:</td>
                             <td class="Form-inputs">
-                                <input type="checkbox" id="unfreeleech" name="unfreeleech" /><label for="unfreeleech"> <?= Lang::get('torrents.reset') ?></label>
-                                <input type="checkbox" id="freeleech" name="freeleech" /><label for="freeleech"> <?= Lang::get('torrents.freeleech') ?></label>
-                                <input type="checkbox" id="neutralleech" name="neutralleech" /><label for="neutralleech"> <?= Lang::get('torrents.neutral_leech') ?></label>
-                                <input type="checkbox" id="off25leech" name="off25leech" /><label for="off25leech"> <?= Lang::get('torrents.off25') ?></label>
-                                <input type="checkbox" id="off50leech" name="off50leech" /><label for="off50leech"> <?= Lang::get('torrents.off50') ?></label>
-                                <input type="checkbox" id="off75leech" name="off75leech" /><label for="off75leech"> <?= Lang::get('torrents.off75') ?></label>
-                                <?= Lang::get('torrents.because') ?>
-                                <select class="Input" name="freeleechtype" <? $FL = array('N/A', 'Staff Pick', 'Perma-FL');
-                                                                            // TODO 种子组的free类型当前没有记忆功能
-                                                                            foreach ($FL as $Key => $FLType) { ?> <option class="Select-option" value="<?= $Key ?>"><?= $FLType ?></option>
-                                <?      } ?>
+                                <select class="Input" name="freeleech">
+                                    <?
+                                    $FL = Torrents::freeleech_option();
+                                    foreach ($FL as $Key => $Name) {
+                                    ?>
+                                        <option class="Select-option" value="<?= $Key ?>" <?= ($Key == $Torrent['FreeTorrent'] ? ' selected="selected"' : '') ?>>
+                                            <?= $Name ?></option>
+                                    <?              } ?>
                                 </select>
-                            </td>
-                        </tr>
-                    <?  } ?>
-                    <tr class="Form-row">
-                        <td rowspan="2">
-                            <div style="text-align: center;">
-                                <input class="Button" type="submit" value="<?= Lang::get('global.submit') ?>" />
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-            </form>
+                                <script>
+                                    $(document).ready(() => {
+                                        $("#limit-time").click(() => {
+                                            if ($("#limit-time")[0].checked) {
+                                                $("#input-free-date,#input-free-time").show()
+                                                if (<?= $Torrent['FreeEndTime'] ? "false" : "true" ?>) {
+                                                    const d = new Date()
+                                                    $("#input-free-date")[0].value = d.getFullYear() + "-" + ("0" + (d.getMonth() +
+                                                        1)).substr(-2) + "-" + ("0" + d.getDate()).substr(-2)
+                                                    $("#input-free-time")[0].value = ("0" + d.getHours()).substr(-2) + ":" + ("0" + d
+                                                        .getMinutes()).substr(-2)
+                                                }
+
+                                            } else {
+                                                $("#input-free-date,#input-free-time").hide()
+                                            }
+                                        })
+                                    })
+                                </script>
+                                <div class="Checkbox">
+                                    <input class="Input" type="checkbox" id="limit-time" name="limit-time" <?= $Torrent['FreeEndTime'] ? " checked=\"checked\"" : "" ?> />
+                                    <label class="Checkbox-label" for="limit-time" style="display: inline;">定时</label>
+                                </div>
         </div>
-    <?
+        <input class="Input" type="date" id="input-free-date" name="free-date" <?= $Torrent['FreeEndTime'] ? "value=\"" . substr($Torrent['FreeEndTime'], 0, 10) . "\"" : "style=\"display:none;\"" ?> /><input class="Input" id="input-free-time" name="free-time" type="time" <?= $Torrent['FreeEndTime'] ? "value=\"" . substr($Torrent['FreeEndTime'], 11, 5) . "\"" : "style=\"display:none;\"" ?> />
+        <?= t('server.upload.because') ?>
+        <select class="Input" name="freeleechtype">
+            <?
+                        $FL = array("N/A", "Staff Pick", "Perma-FL");
+                        foreach ($FL as $Key => $Name) {
+            ?>
+                <option class="Select-option" value="<?= $Key ?>" <?= ($Key == $Torrent['FreeLeechType'] ? ' selected="selected"' : '') ?>><?= $Name ?></option>
+            <?              } ?>
+        </select>
+        </td>
+        </tr>
+    <?  } ?>
+    <tr class="Form-row">
+        <td rowspan="2">
+            <div style="text-align: center;">
+                <input class="Button" type="submit" value="<?= t('server.common.submit') ?>" />
+            </div>
+        </td>
+    </tr>
+    </table>
+    </form>
+</div>
+<?
     }
     if (check_perms('torrents_edit')) {
-    ?>
-        <div>
-            <form class="rename_form" name="torrent_group" action="torrents.php" method="post">
-                <input type="hidden" name="action" value="rename" />
+?>
+    <div>
+        <form class="merge_form" name="torrent_group" action="torrents.php" method="post">
+            <div>
+                <input type="hidden" name="action" value="merge" />
                 <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
                 <input type="hidden" name="groupid" value="<?= $GroupID ?>" />
-                <table cellpadding="3" cellspacing="1" border="0" class="Form-rowList" variant="header" width="100%">
-                    <tr class="Form-rowHeader" id="rename">
-                        <td class="Form-title"><?= Lang::get('torrents.rename') ?></td>
+                <table cellpadding="3" cellspacing="1" border="0" class="Form-rowList" width="100%" variant="header">
+                    <tr class="Form-rowHeader" id="merge">
+                        <td class="Form-title"><?= t('server.torrents.merge_with') ?></td>
                     </tr>
                     <tr class="Form-row">
-                        <td class="Form-label"><?= Lang::get('torrents.group_title') ?>:</td>
-                        <td class="Form-inputs">
-                            <input class="Input" type="text" name="name" size="92" value="<?= $Name ?>" />
-                        </td>
-                    </tr>
-                    <tr class="Form-row">
-                        <td class="Form-label"><?= Lang::get('torrents.chinese_title') ?>:</td>
-                        <td class="Form-inputs">
-                            <input class="Input" type="text" name="subname" size="92" value="<?= $SubName ?>" />
+                        <td class="Form-label"><?= t('server.torrents.merge_target') ?>:</td>
+                        <td class="Form-inputs FormOneLine">
+                            <input class="Input is-small" type="text" name="targetgroupid" size="10" />
                         </td>
                     </tr>
                     <tr class="Form-row">
                         <td rowspan="2">
-                            <div style="text-align: center;">
-                                <input class="Button" type="submit" value="<?= Lang::get('global.submit') ?>" />
-                            </div>
+                            <input class="Button" type="submit" value="<?= t('server.common.submit') ?>" />
                         </td>
                     </tr>
-                </table>
-            </form>
-        </div>
+            </div>
 
-        <div>
-            <form class="merge_form" name="torrent_group" action="torrents.php" method="post">
-                <div>
-                    <input type="hidden" name="action" value="merge" />
-                    <input type="hidden" name="auth" value="<?= $LoggedUser['AuthKey'] ?>" />
-                    <input type="hidden" name="groupid" value="<?= $GroupID ?>" />
-                    <table cellpadding="3" cellspacing="1" border="0" class="Form-rowList" width="100%" variant="header">
-                        <tr class="Form-rowHeader" id="merge">
-                            <td class="Form-title"><?= Lang::get('torrents.merge_with') ?></td>
-                        </tr>
-                        <tr class="Form-row">
-                            <td class="Form-label"><?= Lang::get('torrents.merge_target') ?></td>
-                            <td class="Form-inputs FormOneLine">
-                                <input class="Input is-small" type="text" name="targetgroupid" size="10" />
-                                <input class="Button" type="submit" value="<?= Lang::get('global.submit') ?>" />
-                            </td>
-                        </tr>
-                        <tr class="Form-row">
-                            <td rowspan="2">
-                                <div style="text-align: center;">
-                            </td>
-                        </tr>
-                </div>
-
-                </table>
-        </div>
-        </form>
-</div>
+            </table>
+    </div>
+    </form>
+    </div>
 <?  } ?>
 </div>
 <? View::show_footer(); ?>
